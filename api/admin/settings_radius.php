@@ -41,6 +41,20 @@ function handleUpdateRadiusSettings() {
         $input = $_POST;
     }
 
+    // Handle CoA test request explicitly
+    if (!empty($input['send_coa']) && !empty($input['coa_username'])) {
+        try {
+            $radius = new RadiusSqlCoa([
+                'nas_ip' => $input['nas_ip'] ?? getSetting('nas_ip'),
+                'nas_secret' => !empty($input['nas_secret']) ? $input['nas_secret'] : decryptData(getSetting('nas_secret'))
+            ]);
+            $result = $radius->sendCoA(sanitizeInput($input['coa_username']));
+            successResponse(['message' => 'CoA request sent', 'test_result' => $result]);
+        } catch (Throwable $e) {
+            errorResponse('Failed to send CoA: ' . $e->getMessage(), 500);
+        }
+    }
+
     $settings = [
         'radius_db_host',
         'radius_db_name',

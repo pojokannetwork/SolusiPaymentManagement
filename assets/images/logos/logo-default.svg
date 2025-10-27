@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" style="background:#4f46e5;">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="60" fill="url(#grad1)" rx="8"/>
+  
+  <!-- Icon -->
+  <g transform="translate(15,15)">
+    <!-- Credit card outline -->
+    <rect x="0" y="8" width="24" height="16" rx="2" fill="none" stroke="white" stroke-width="1.5"/>
+    <!-- Card stripe -->
+    <rect x="0" y="12" width="24" height="3" fill="white" opacity="0.6"/>
+    <!-- Card chip -->
+    <rect x="3" y="16" width="4" height="3" rx="0.5" fill="white" opacity="0.8"/>
+    <!-- Wireless signal -->
+    <circle cx="18" cy="18" r="1.5" fill="white"/>
+    <circle cx="18" cy="18" r="3" fill="none" stroke="white" stroke-width="1" opacity="0.6"/>
+    <circle cx="18" cy="18" r="4.5" fill="none" stroke="white" stroke-width="1" opacity="0.4"/>
+  </g>
+  
+  <!-- Company Name -->
+  <text x="50" y="25" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">
+    SolusiPaymentManagement
+  </text>
+  
+  <!-- Tagline -->
+  <text x="50" y="40" font-family="Arial, sans-serif" font-size="8" fill="white" opacity="0.8">
+    Smart Payment Solution
+  </text>
+</svg>

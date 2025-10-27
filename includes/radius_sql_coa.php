@@ -2,7 +2,7 @@
 // SolusiPaymentManagement FreeRADIUS MySQL + CoA Integration
 
 class RadiusSqlCoa {
-    private $db;
+    private $db; // PDO connection to RADIUS DB
     private $nasIp;
     private $nasSecret;
     private $coaPort;
@@ -10,7 +10,13 @@ class RadiusSqlCoa {
     public function __construct($config = []) {
         $this->db = Database::getInstance()->getRadiusConnection();
         $this->nasIp = $config['nas_ip'] ?? getSetting('nas_ip');
-        $this->nasSecret = $config['nas_secret'] ?? getSetting('nas_secret');
+        // Decrypt NAS secret if stored encrypted in settings when not explicitly provided
+        if (isset($config['nas_secret'])) {
+            $this->nasSecret = $config['nas_secret'];
+        } else {
+            $stored = getSetting('nas_secret');
+            $this->nasSecret = $stored ? decryptData($stored) : null;
+        }
         $this->coaPort = $config['coa_port'] ?? RADIUS_COA_PORT;
     }
 
@@ -27,17 +33,23 @@ class RadiusSqlCoa {
         }
     }
 
+    private function exec($sql, array $params = []) {
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->rowCount();
+    }
+
     // Upsert user in radcheck table
     public function upsertUser($username, $password = null, $attributes = []) {
         try {
             // Remove existing entries for this user
-            $this->db->exec("DELETE FROM radcheck WHERE username = ?", [$username]);
-            $this->db->exec("DELETE FROM radreply WHERE username = ?", [$username]);
-            $this->db->exec("DELETE FROM radusergroup WHERE username = ?", [$username]);
+            $this->exec("DELETE FROM radcheck WHERE username = ?", [$username]);
+            $this->exec("DELETE FROM radreply WHERE username = ?", [$username]);
+            $this->exec("DELETE FROM radusergroup WHERE username = ?", [$username]);
 
             // Add password if provided
             if ($password) {
-                $this->db->exec(
+                $this->exec(
                     "INSERT INTO radcheck (username, attribute, op, value) VALUES (?, 'Cleartext-Password', ':=', ?)",
                     [$username, $password]
                 );
@@ -46,12 +58,12 @@ class RadiusSqlCoa {
             // Add additional attributes
             foreach ($attributes as $attr) {
                 if ($attr['type'] === 'check') {
-                    $this->db->exec(
+                    $this->exec(
                         "INSERT INTO radcheck (username, attribute, op, value) VALUES (?, ?, ?, ?)",
                         [$username, $attr['attribute'], $attr['op'], $attr['value']]
                     );
                 } elseif ($attr['type'] === 'reply') {
-                    $this->db->exec(
+                    $this->exec(
                         "INSERT INTO radreply (username, attribute, op, value) VALUES (?, ?, ?, ?)",
                         [$username, $attr['attribute'], $attr['op'], $attr['value']]
                     );
@@ -71,10 +83,10 @@ class RadiusSqlCoa {
     public function setGroup($username, $groupName) {
         try {
             // Remove existing group assignment
-            $this->db->exec("DELETE FROM radusergroup WHERE username = ?", [$username]);
+            $this->exec("DELETE FROM radusergroup WHERE username = ?", [$username]);
 
             // Add new group assignment
-            $this->db->exec(
+            $this->exec(
                 "INSERT INTO radusergroup (username, groupname, priority) VALUES (?, ?, 1)",
                 [$username, $groupName]
             );
@@ -92,13 +104,13 @@ class RadiusSqlCoa {
     public function setRateLimit($username, $rateLimit) {
         try {
             // Remove existing rate limit
-            $this->db->exec(
+            $this->exec(
                 "DELETE FROM radreply WHERE username = ? AND attribute = 'Mikrotik-Rate-Limit'",
                 [$username]
             );
 
             // Add new rate limit
-            $this->db->exec(
+            $this->exec(
                 "INSERT INTO radreply (username, attribute, op, value) VALUES (?, 'Mikrotik-Rate-Limit', ':=', ?)",
                 [$username, $rateLimit]
             );

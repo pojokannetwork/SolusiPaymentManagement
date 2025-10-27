@@ -2,7 +2,8 @@
 // SolusiPaymentManagement Login Template
 ?>
 <!DOCTYPE html>
-<html lang="id">
+<?php $APP_LANG = function_exists('getSetting') ? htmlspecialchars(getSetting('language', 'id')) : 'id'; ?>
+<html lang="<?= $APP_LANG ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -97,6 +98,9 @@
             border-radius: 20px;
             box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
             border: 1px solid rgba(255, 255, 255, 0.2);
+            inline-size: 100%;
+            max-inline-size: 480px;
+            margin: 0 auto;
         }
 
         .login-header {
@@ -129,6 +133,10 @@
         .btn-login:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .login-body {
+            inline-size: 100%;
         }
 
         /* Features Section */
@@ -189,9 +197,20 @@
         }
 
         /* Responsive */
+        @media (max-inline-size: 992px) {
+            .hero-section {
+                min-block-size: auto;
+                padding: 4rem 0;
+            }
+
+            .login-card {
+                margin: 2rem auto;
+            }
+        }
+
         @media (max-inline-size: 768px) {
             .hero-section {
-                padding: 2rem 0;
+                padding: 3rem 0 2rem;
             }
             
             .slide-item {
@@ -201,7 +220,23 @@
             }
             
             .login-card {
-                margin: 1rem;
+                margin: 1.5rem auto;
+                border-radius: 16px;
+            }
+
+            .login-header {
+                padding: 1.75rem;
+                border-radius: 16px 16px 0 0;
+            }
+
+            .login-body {
+                padding: 1.75rem !important;
+            }
+        }
+
+        @media (max-inline-size: 576px) {
+            .login-body {
+                padding: 1.5rem !important;
             }
         }
 
@@ -345,13 +380,13 @@
                 </div>
 
                 <!-- Login Form -->
-                <div class="col-lg-5" data-aos="fade-left">
-                    <div class="login-card" id="login">
+                <div class="col-lg-5 d-flex justify-content-center" data-aos="fade-left">
+                    <div class="login-card w-100" id="login">
                         <div class="login-header">
                             <h2><i class="fas fa-sign-in-alt me-2"></i>Portal Login</h2>
                             <p class="mb-0">Masuk ke sistem manajemen</p>
                         </div>
-                        <div class="p-4 p-lg-5">
+                        <div class="login-body p-4 p-lg-5">
                             <?php if (isset($_GET['message'])): ?>
                                 <div class="alert alert-info alert-dismissible fade show">
                                     <i class="fas fa-info-circle me-2"></i>
@@ -384,18 +419,6 @@
                                 </div>
                             </form>
 
-                            <hr class="my-4">
-
-                            <div class="text-center">
-                                <h6 class="text-muted mb-3">Akun Demo Testing</h6>
-                                <div class="bg-light p-3 rounded">
-                                    <strong class="text-primary d-block">Administrator</strong>
-                                    <small class="text-muted">
-                                        Email: admin@solusipayment.local<br>
-                                        Password: Admin123!
-                                    </small>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>

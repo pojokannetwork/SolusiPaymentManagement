@@ -1,118 +1,167 @@
 <?php
-// SolusiPaymentManagement Admin Customers Map Page
-
-require_once __DIR__ . '/../includes/bootstrap.php';
+$page_title = 'Customer Map';
+require_once __DIR__ . '/../includes/admin_header.php';
 
 // Check authentication and permissions
-$guard = RouterGuard::getInstance();
 $guard->requirePermission('admin.customers_map');
-
-$user = getCurrentUser();
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Map - SolusiPaymentManagement</title>
 
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome 6 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+    #map { 
+        height: 600px; 
+        width: 100%; 
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+    }
+    
+    .map-controls { 
+        background: white; 
+        padding: 15px; 
+        border-radius: 12px; 
+        box-shadow: var(--card-shadow);
+        margin-bottom: 1rem;
+    }
+    
+    .customer-marker { 
+        border-radius: 50%; 
+        width: 20px; 
+        height: 20px; 
+        border: 2px solid white; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+    }
+    
+    .status-active { background: #198754; }
+    .status-isolir { background: #dc3545; }
+    .status-suspended { background: #ffc107; }
+    .status-terminated { background: #6c757d; }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        margin-right: 8px;
+        border: 1px solid #ddd;
+    }
+    
+    .map-stat {
+        text-align: center;
+        padding: 10px;
+        border-radius: 8px;
+        background: rgba(79, 70, 229, 0.1);
+    }
+    
+    @media (max-width: 768px) {
+        #map {
+            height: 400px;
+        }
+        
+        .map-controls {
+            padding: 10px;
+        }
+        
+        .btn-group-responsive {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .btn-group-responsive .btn {
+            font-size: 0.875rem;
+        }
+    }
+</style>
 
-    <style>
-        .sidebar { min-height: 100vh; background: #343a40; }
-        .sidebar .nav-link { color: rgba(255,255,255,.75); }
-        .sidebar .nav-link:hover { color: #fff; }
-        .sidebar .nav-link.active { color: #fff; background: #0d6efd; }
-        .main-content { margin-left: 0; }
-        @media (min-width: 768px) { .main-content { margin-left: 250px; } }
-        #map { height: 600px; width: 100%; }
-        .map-controls { background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .customer-marker { border-radius: 50%; width: 20px; height: 20px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        .status-active { background: #198754; }
-        .status-isolir { background: #dc3545; }
-        .status-suspended { background: #ffc107; }
-        .status-terminated { background: #6c757d; }
-    </style>
-</head>
-<body>
-    <!-- Sidebar -->
-    <nav class="sidebar position-fixed" style="width: 250px;">
-        <div class="p-3">
-            <h5 class="text-white mb-4">
-                <i class="fas fa-cogs me-2"></i>
-                SolusiPaymentManagement
-            </h5>
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php">
-                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="customers.php">
-                        <i class="fas fa-users me-2"></i>Customers
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="invoices.php">
-                        <i class="fas fa-file-invoice me-2"></i>Invoices
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="transactions.php">
-                        <i class="fas fa-credit-card me-2"></i>Transactions
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="payment_gateways.php">
-                        <i class="fas fa-money-check me-2"></i>Payment Gateways
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="customers_map.php">
-                        <i class="fas fa-map-marked-alt me-2"></i>Customer Map
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="settings.php">
-                        <i class="fas fa-cog me-2"></i>Settings
-                    </a>
-                </li>
-                <li class="nav-item mt-3">
-                    <a class="nav-link text-danger" href="#" onclick="logout()">
-                        <i class="fas fa-sign-out-alt me-2"></i>Logout
-                    </a>
-                </li>
-            </ul>
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<!-- Page Content -->
+<div class="p-4")
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <div class="mb-2 mb-md-0">
+            <h2 class="heading-responsive mb-1">Customer Map</h2>
+            <p class="text-muted mb-0">Visualisasi lokasi pelanggan dalam peta interaktif</p>
         </div>
-    </nav>
+        <div class="btn-group-responsive">
+            <button class="btn btn-primary btn-responsive" onclick="refreshMap()">
+                <i class="fas fa-sync-alt me-2"></i>Refresh Map
+            </button>
+            <button class="btn btn-outline-secondary btn-responsive" onclick="fitBounds()">
+                <i class="fas fa-expand me-2"></i>Fit All
+            </button>
+        </div>
+    </div>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <div class="container-fluid p-4">
-            <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Customer Map</h2>
-                <div>
-                    <button class="btn btn-outline-primary me-2" onclick="refreshMap()">
-                        <i class="fas fa-sync-alt me-2"></i>Refresh
-                    </button>
-                    <button class="btn btn-outline-secondary" onclick="fitBounds()">
-                        <i class="fas fa-expand me-2"></i>Fit All
-                    </button>
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card stat-card h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon mb-2">
+                        <i class="fas fa-users fa-2x text-primary"></i>
+                    </div>
+                    <h6 class="card-title mb-1">Total Customers</h6>
+                    <h4 class="text-primary mb-0" id="total-customers">-</h4>
                 </div>
             </div>
+        </div>
+        
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card stat-card h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon mb-2">
+                        <i class="fas fa-check-circle fa-2x text-success"></i>
+                    </div>
+                    <h6 class="card-title mb-1">Active</h6>
+                    <h4 class="text-success mb-0" id="active-customers">-</h4>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card stat-card h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon mb-2">
+                        <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                    </div>
+                    <h6 class="card-title mb-1">Issues</h6>
+                    <h4 class="text-warning mb-0" id="issue-customers">-</h4>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card stat-card h-100">
+                <div class="card-body text-center">
+                    <div class="stat-icon mb-2">
+                        <i class="fas fa-map-marker-alt fa-2x text-info"></i>
+                    </div>
+                    <h6 class="card-title mb-1">Mapped</h6>
+                    <h4 class="text-info mb-0" id="mapped-customers">-</h4>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            <!-- Filters -->
-            <div class="card mb-4">
+    <!-- Map Controls -->
+    <div class="row mb-4">
+        <div class="col-lg-9">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter me-2"></i>Map Filters
+                    </h5>
+                </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-3">
+                        <div class="col-md-3 col-6">
                             <label class="form-label">Status Filter</label>
                             <select class="form-select" id="status-filter">
                                 <option value="">All Status</option>
@@ -122,69 +171,81 @@ $user = getCurrentUser();
                                 <option value="terminated">Terminated</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-3 col-6">
                             <label class="form-label">Package Filter</label>
                             <select class="form-select" id="package-filter">
                                 <option value="">All Packages</option>
                                 <!-- Packages will be loaded dynamically -->
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Search</label>
-                            <input type="text" class="form-control" id="search-input" placeholder="Search customers...">
+                        <div class="col-md-4">
+                            <label class="form-label">Search Customer</label>
+                            <input type="text" class="form-control" id="search-input" placeholder="Search by name, ID, address...">
                         </div>
-                        <div class="col-md-3 d-flex align-items-end">
-                            <button class="btn btn-outline-secondary me-2" onclick="clearFilters()">
-                                <i class="fas fa-times me-2"></i>Clear
-                            </button>
-                            <button class="btn btn-outline-info" onclick="updateCoordinates()">
-                                <i class="fas fa-map-marker-alt me-2"></i>Update Coords
-                            </button>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="btn-group w-100">
+                                <button class="btn btn-outline-secondary btn-sm" onclick="clearFilters()" title="Clear Filters">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" onclick="updateCoordinates()" title="Update Coordinates">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Map -->
+        </div>
+        
+        <div class="col-lg-3">
             <div class="card">
-                <div class="card-body">
-                    <div id="map"></div>
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-palette me-2"></i>Legend
+                    </h5>
                 </div>
-            </div>
-
-            <!-- Legend -->
-            <div class="card mt-3">
                 <div class="card-body">
-                    <h6>Legend</h6>
-                    <div class="d-flex flex-wrap gap-3">
-                        <div class="d-flex align-items-center">
-                            <div class="customer-marker status-active me-2"></div>
-                            <span>Active</span>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="customer-marker status-isolir me-2"></div>
-                            <span>Isolir</span>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="customer-marker status-suspended me-2"></div>
-                            <span>Suspended</span>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="customer-marker status-terminated me-2"></div>
-                            <span>Terminated</span>
-                        </div>
+                    <div class="legend-item">
+                        <div class="legend-color status-active"></div>
+                        <small>Active</small>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color status-isolir"></div>
+                        <small>Isolir</small>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color status-suspended"></div>
+                        <small>Suspended</small>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color status-terminated"></div>
+                        <small>Terminated</small>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Interactive Map -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-map me-2"></i>Customer Locations
+            </h5>
+            <div class="map-stats d-none d-md-block">
+                <small class="text-muted">
+                    <span id="visible-markers">0</span> markers visible
+                </small>
+            </div>
+        </div>
+        <div class="card-body p-2">
+            <div id="map"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
         const csrfToken = '<?php echo getCsrfToken(); ?>';
@@ -222,7 +283,7 @@ $user = getCurrentUser();
             $.get('/api/admin/customers?action=list&limit=10000&map=true')
                 .done(function(response) {
                     if (response.success) {
-                        allCustomers = response.customers.filter(customer => customer.lat && customer.lon);
+                        allCustomers = (response.data?.customers || []).filter(customer => customer.lat && customer.lon);
                         renderMarkers(allCustomers);
                         fitBounds();
                     }
@@ -234,7 +295,7 @@ $user = getCurrentUser();
                 .done(function(response) {
                     if (response.success) {
                         let options = '<option value="">All Packages</option>';
-                        response.packages.forEach(function(pkg) {
+                        (response.data?.packages || []).forEach(function(pkg) {
                             options += `<option value="${pkg}">${pkg}</option>`;
                         });
                         $('#package-filter').html(options);
@@ -394,5 +455,90 @@ $user = getCurrentUser();
             }
         }
     </script>
-</body>
-</html>
+
+<script>
+// Mobile Sidebar Toggle Functionality
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar, .offcanvas');
+    if (!sidebar) return;
+    
+    if (sidebar.classList.contains('offcanvas')) {
+        // Bootstrap offcanvas
+        const bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(sidebar);
+        bsOffcanvas.toggle();
+    } else {
+        // Custom sidebar
+        sidebar.classList.toggle('show');
+        
+        if (window.innerWidth <= 991) {
+            let overlay = document.querySelector('.sidebar-overlay');
+            if (sidebar.classList.contains('show')) {
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.className = 'sidebar-overlay';
+                    overlay.style.cssText = `
+                        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                        background: rgba(0, 0, 0, 0.5); z-index: 1040; display: block;
+                    `;
+                    overlay.onclick = toggleSidebar;
+                    document.body.appendChild(overlay);
+                }
+            } else if (overlay) {
+                overlay.remove();
+            }
+        }
+    }
+}
+
+// Add responsive classes to tables
+document.addEventListener('DOMContentLoaded', function() {
+    // Make tables responsive
+    document.querySelectorAll('table').forEach(table => {
+        if (!table.closest('.table-responsive')) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'table-responsive';
+            table.parentNode.insertBefore(wrapper, table);
+            wrapper.appendChild(table);
+        }
+        table.classList.add('table-mobile');
+    });
+    
+    // Add data-label attributes to table cells
+    document.querySelectorAll('table.table-mobile').forEach(table => {
+        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+        table.querySelectorAll('tbody tr').forEach(row => {
+            row.querySelectorAll('td').forEach((cell, index) => {
+                if (headers[index] && !cell.hasAttribute('data-label')) {
+                    cell.setAttribute('data-label', headers[index]);
+                }
+            });
+        });
+    });
+    
+    // Add responsive classes to buttons
+    document.querySelectorAll('.btn').forEach(btn => {
+        if (!btn.classList.contains('btn-responsive')) {
+            btn.classList.add('btn-responsive');
+        }
+    });
+    
+    // Add responsive classes to cards
+    document.querySelectorAll('.card').forEach(card => {
+        if (!card.classList.contains('card-responsive')) {
+            card.classList.add('card-responsive');
+        }
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+        
+        if (window.innerWidth > 991 && sidebar) {
+            sidebar.classList.remove('show');
+            if (overlay) overlay.remove();
+        }
+    });
+});
+</script>
+?><?php require_once __DIR__ . "/../includes/admin_footer.php"; ?>

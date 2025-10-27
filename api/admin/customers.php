@@ -1,341 +1,434 @@
 <?php
-// SolusiPaymentManagement Admin API - Customers Management
+require_once '../../includes/bootstrap.php';
 
-require_once __DIR__ . '/../../includes/bootstrap.php';
-
+// Ensure we send JSON response
 header('Content-Type: application/json');
 
-// Check authentication and permissions
+// Security check
 $guard = RouterGuard::getInstance();
 $guard->requirePermission('admin.customers');
 
-$method = $_SERVER['REQUEST_METHOD'];
-$action = $_GET['action'] ?? 'list';
+$action = $_GET['action'] ?? $_POST['action'] ?? null;
+$customerId = $_GET['id'] ?? $_POST['id'] ?? null;
 
-switch ($method) {
-    case 'GET':
-        if ($action === 'list') {
-            handleListCustomers();
-        } else {
-            errorResponse('Invalid action', 400);
-        }
+switch ($action) {
+    case 'list':
+        handleList();
         break;
-
-    case 'POST':
-        if ($action === 'create') {
-            handleCreateCustomer();
-        } elseif ($action === 'update') {
-            handleUpdateCustomer();
-        } elseif ($action === 'delete') {
-            handleDeleteCustomer();
-        } elseif ($action === 'isolir') {
-            handleIsolirCustomer();
-        } elseif ($action === 'activate') {
-            handleActivateCustomer();
-        } else {
-            errorResponse('Invalid action', 400);
-        }
+    case 'get':
+        handleGet($customerId);
         break;
-
+    case 'create':
+        handleCreate();
+        break;
+    case 'update':
+        handleUpdate();
+        break;
+    case 'delete':
+        handleDelete($customerId);
+        break;
+    case 'isolir':
+    case 'activate':
+        handleToggleStatus($customerId, $action);
+        break;
     default:
-        errorResponse('Method not allowed', 405);
+        errorResponse('Invalid action specified', 400);
 }
 
-function handleListCustomers() {
+function handleList() {
     global $db;
-
-    $page = (int) ($_GET['page'] ?? 1);
-    $limit = (int) ($_GET['limit'] ?? 50);
-    $offset = ($page - 1) * $limit;
-
-    $status = $_GET['status'] ?? '';
     $search = $_GET['search'] ?? '';
-    $map = $_GET['map'] ?? 'false';
+    $status = $_GET['status'] ?? '';
+    $package = $_GET['package'] ?? '';
 
-    $where = [];
+    $baseQuery = "SELECT p.*, r.name as router_name FROM pelanggan p LEFT JOIN mikrotik_routers r ON p.router_id = r.id";
+    $whereClauses = [];
     $params = [];
 
-    if ($status) {
-        $where[] = "status = ?";
+    if (!empty($status)) {
+        $whereClauses[] = "p.status = ?";
         $params[] = $status;
     }
 
-    if ($search) {
-        $where[] = "(nama LIKE ? OR email LIKE ? OR kode_pelanggan LIKE ? OR pppoe_user LIKE ?)";
-        $params[] = "%{$search}%";
-        $params[] = "%{$search}%";
-        $params[] = "%{$search}%";
-        $params[] = "%{$search}%";
+    if (!empty($search)) {
+        $searchWildcard = "%{$search}%";
+        $whereClauses[] = "(p.nama LIKE ? OR p.kode_pelanggan LIKE ? OR p.email LIKE ? OR p.telp LIKE ? OR p.pppoe_user LIKE ?)";
+        array_push($params, $searchWildcard, $searchWildcard, $searchWildcard, $searchWildcard, $searchWildcard);
     }
 
-    $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+    if (!empty($package)) {
+        $whereClauses[] = "p.paket = ?";
+        $params[] = $package;
+    }
 
-    // Get total count
-    $total = $db->fetchOne("SELECT COUNT(*) as count FROM pelanggan {$whereClause}", $params)['count'];
+    if (!empty($whereClauses)) {
+        $baseQuery .= " WHERE " . implode(' AND ', $whereClauses);
+    }
 
-    // Get customers
-    $selectFields = $map === 'true' ?
-        "id, kode_pelanggan, nama, lat, lon, status" :
-        "id, kode_pelanggan, nama, email, telp, alamat, paket, status, pppoe_user, router_id, created_at";
+    $baseQuery .= " ORDER BY p.created_at DESC";
 
-    $customers = $db->fetchAll(
-        "SELECT {$selectFields} FROM pelanggan {$whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?",
-        array_merge($params, [$limit, $offset])
-    );
-
-    successResponse([
-        'customers' => $customers,
-        'pagination' => [
-            'page' => $page,
-            'limit' => $limit,
-            'total' => $total,
-            'pages' => ceil($total / $limit)
-        ]
-    ]);
+    try {
+        $customers = $db->fetchAll($baseQuery, $params);
+        successResponse(['customers' => $customers]);
+    } catch (Exception $e) {
+        error_log("Customer List Error: " . $e->getMessage());
+        errorResponse('Failed to retrieve customer list.', 500);
+    }
 }
 
-function handleCreateCustomer() {
+function handleGet($customerId) {
     global $db;
-
-    $input = json_decode(file_get_contents('php://input'), true);
-    if (!$input) {
-        $input = $_POST;
+    if (!$customerId) {
+        errorResponse('Customer ID is required', 400);
     }
-
-    // Validate required fields
-    $required = ['nama', 'email', 'paket'];
-    foreach ($required as $field) {
-        if (empty($input[$field])) {
-            errorResponse("Field '{$field}' is required", 400);
+    $customer = $db->fetchOne("SELECT * FROM pelanggan WHERE id = ?", [$customerId]);
+    // Attach mitra mapping if available
+    try {
+        ensureMitraMappingTable();
+        $map = $db->fetchOne('SELECT agent_id, region, share_percent FROM isp_agent_customers WHERE customer_id = ?', [$customerId]);
+        if ($map) {
+            $customer['mitra_id'] = (int)$map['agent_id'];
+            $customer['mitra_region'] = $map['region'];
+            $customer['mitra_share'] = $map['share_percent'];
         }
+    } catch (Throwable $e) {
+        // ignore mapping if table not available
     }
-
-    // Generate customer code
-    $kodePelanggan = generateCustomerCode();
-
-    // Prepare data
-    $data = [
-        'kode_pelanggan' => $kodePelanggan,
-        'nama' => sanitizeInput($input['nama']),
-        'email' => sanitizeInput($input['email']),
-        'telp' => sanitizeInput($input['telp'] ?? ''),
-        'alamat' => sanitizeInput($input['alamat'] ?? ''),
-        'paket' => sanitizeInput($input['paket']),
-        'pppoe_user' => sanitizeInput($input['pppoe_user'] ?? ''),
-        'pppoe_pass_enc' => !empty($input['pppoe_pass']) ? encryptData($input['pppoe_pass']) : null,
-        'router_id' => $input['router_id'] ?? null,
-        'profile_aktif' => sanitizeInput($input['profile_aktif'] ?? 'default'),
-        'profile_isolir' => sanitizeInput($input['profile_isolir'] ?? 'ISOLIR'),
-        'ip_static' => sanitizeInput($input['ip_static'] ?? ''),
-        'status' => 'active'
-    ];
-
-    // Insert customer
-    $customerId = $db->insert(
-        "INSERT INTO pelanggan (kode_pelanggan, nama, email, telp, alamat, paket, pppoe_user, pppoe_pass_enc, router_id, profile_aktif, profile_isolir, ip_static, status, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
-        array_values($data)
-    );
-
-    // Provision if PPPoE credentials provided
-    if (!empty($data['pppoe_user']) && !empty($input['pppoe_pass'])) {
-        provisionCustomer($customerId, $data);
-    }
-
-    // Log activity
-    global $logger;
-    $logger->logDataChange('pelanggan', 'create', $customerId, null, $data);
-
-    successResponse([
-        'customer_id' => $customerId,
-        'kode_pelanggan' => $kodePelanggan,
-        'message' => 'Customer created successfully'
-    ], 'Customer created successfully');
-}
-
-function handleUpdateCustomer() {
-    global $db;
-
-    $customerId = $_GET['id'] ?? 0;
-    if (!$customerId) {
-        errorResponse('Customer ID is required', 400);
-    }
-
-    $input = json_decode(file_get_contents('php://input'), true);
-    if (!$input) {
-        $input = $_POST;
-    }
-
-    // Get existing customer
-    $existing = $db->fetchOne("SELECT * FROM pelanggan WHERE id = ?", [$customerId]);
-    if (!$existing) {
-        errorResponse('Customer not found', 404);
-    }
-
-    // Prepare update data
-    $updates = [];
-    $params = [];
-
-    $fields = ['nama', 'email', 'telp', 'alamat', 'paket', 'status', 'pppoe_user', 'router_id', 'profile_aktif', 'profile_isolir', 'ip_static'];
-    foreach ($fields as $field) {
-        if (isset($input[$field])) {
-            $updates[] = "{$field} = ?";
-            $params[] = sanitizeInput($input[$field]);
-        }
-    }
-
-    // Handle password update
-    if (!empty($input['pppoe_pass'])) {
-        $updates[] = "pppoe_pass_enc = ?";
-        $params[] = encryptData($input['pppoe_pass']);
-    }
-
-    if (empty($updates)) {
-        errorResponse('No fields to update', 400);
-    }
-
-    $params[] = $customerId;
-
-    // Update customer
-    $db->execute(
-        "UPDATE pelanggan SET " . implode(', ', $updates) . ", updated_at = NOW() WHERE id = ?",
-        $params
-    );
-
-    // Re-provision if PPPoE credentials changed
-    $newData = array_merge($existing, $input);
-    if (!empty($newData['pppoe_user']) && (!empty($input['pppoe_pass']) || !empty($newData['pppoe_pass_enc']))) {
-        provisionCustomer($customerId, $newData);
-    }
-
-    // Log activity
-    global $logger;
-    $logger->logDataChange('pelanggan', 'update', $customerId, $existing, $newData);
-
-    successResponse(['message' => 'Customer updated successfully']);
-}
-
-function handleDeleteCustomer() {
-    global $db;
-
-    $customerId = $_GET['id'] ?? 0;
-    if (!$customerId) {
-        errorResponse('Customer ID is required', 400);
-    }
-
-    // Check if customer has unpaid invoices
-    $unpaidInvoices = $db->fetchOne(
-        "SELECT COUNT(*) as count FROM faktur WHERE pelanggan_id = ? AND status IN ('draft', 'sent')",
-        [$customerId]
-    );
-
-    if ($unpaidInvoices['count'] > 0) {
-        errorResponse('Cannot delete customer with unpaid invoices', 400);
-    }
-
-    // Get customer data before deletion
-    $customer = $db->fetchOne("SELECT * FROM pelanggan WHERE id = ?", [$customerId]);
-
-    // Delete customer
-    $db->execute("DELETE FROM pelanggan WHERE id = ?", [$customerId]);
-
-    // Log activity
-    global $logger;
-    $logger->logDataChange('pelanggan', 'delete', $customerId, $customer, null);
-
-    successResponse(['message' => 'Customer deleted successfully']);
-}
-
-function handleIsolirCustomer() {
-    global $db;
-
-    $customerId = $_GET['id'] ?? 0;
-    if (!$customerId) {
-        errorResponse('Customer ID is required', 400);
-    }
-
-    // Get customer
-    $customer = $db->fetchOne("SELECT * FROM pelanggan WHERE id = ?", [$customerId]);
-    if (!$customer) {
-        errorResponse('Customer not found', 404);
-    }
-
-    // Update status
-    $db->execute(
-        "UPDATE pelanggan SET status = 'isolir', updated_at = NOW() WHERE id = ?",
-        [$customerId]
-    );
-
-    // Provision isolation
-    provisionCustomer($customerId, array_merge($customer, ['status' => 'isolir']));
-
-    // Log activity
-    global $logger;
-    $logger->log('customer_isolir', ['customer_id' => $customerId]);
-
-    successResponse(['message' => 'Customer isolated successfully']);
-}
-
-function handleActivateCustomer() {
-    global $db;
-
-    $customerId = $_GET['id'] ?? 0;
-    if (!$customerId) {
-        errorResponse('Customer ID is required', 400);
-    }
-
-    // Get customer
-    $customer = $db->fetchOne("SELECT * FROM pelanggan WHERE id = ?", [$customerId]);
-    if (!$customer) {
-        errorResponse('Customer not found', 404);
-    }
-
-    // Update status
-    $db->execute(
-        "UPDATE pelanggan SET status = 'active', updated_at = NOW() WHERE id = ?",
-        [$customerId]
-    );
-
-    // Provision activation
-    provisionCustomer($customerId, array_merge($customer, ['status' => 'active']));
-
-    // Log activity
-    global $logger;
-    $logger->log('customer_activate', ['customer_id' => $customerId]);
-
-    successResponse(['message' => 'Customer activated successfully']);
-}
-
-function provisionCustomer($customerId, $customerData) {
-    $sourceOfTruth = getSetting('source_of_truth', 'radius');
-
-    if ($sourceOfTruth === 'radius') {
-        $radius = new RadiusSqlCoa();
-        $profile = $customerData['status'] === 'isolir' ? $customerData['profile_isolir'] : $customerData['profile_aktif'];
-        $result = $radius->provisionCustomer([
-            'pppoe_user' => $customerData['pppoe_user'],
-            'pppoe_pass' => decryptData($customerData['pppoe_pass_enc']),
-            'profile' => $profile,
-            'rate_limit' => $customerData['paket'] // Could be mapped to actual rate limit
-        ]);
+    if ($customer) {
+        successResponse(['customer' => $customer]);
     } else {
-        // MikroTik provisioning
-        if (!empty($customerData['router_id'])) {
-            $mtk = MtkFactory::createFromRouter($customerData['router_id']);
-            $profile = $customerData['status'] === 'isolir' ? $customerData['profile_isolir'] : $customerData['profile_aktif'];
-            $result = $mtk->provisionCustomer([
-                'pppoe_user' => $customerData['pppoe_user'],
-                'profile' => $profile,
-                'enabled' => $customerData['status'] === 'active'
-            ]);
+        errorResponse('Customer not found', 404);
+    }
+}
+
+function handleCreate() {
+    global $db;
+    $data = $_POST;
+    
+    // Basic validation
+    if (empty($data['nama']) || empty($data['paket'])) {
+        errorResponse('Name and Package are required.', 400);
+    }
+
+    $data['kode_pelanggan'] = generateCustomerCode();
+    if (empty($data['status'])) {
+        $data['status'] = 'active';
+    }
+    if (!empty($data['pppoe_pass'])) {
+        $data['pppoe_pass_enc'] = encryptData($data['pppoe_pass']);
+    }
+
+    $fields = ['kode_pelanggan', 'nama', 'email', 'telp', 'alamat', 'lat', 'lon', 'paket', 'status', 'router_id', 'pppoe_user', 'pppoe_pass_enc', 'profile_aktif', 'profile_isolir'];
+    $insertData = [];
+    foreach ($fields as $field) {
+        $insertData[$field] = $data[$field] ?? null;
+    }
+
+    $columns = implode(', ', array_keys($insertData));
+    $placeholders = implode(', ', array_fill(0, count($insertData), '?'));
+    $values = array_values($insertData);
+
+    try {
+        $newId = $db->insert("INSERT INTO pelanggan ({$columns}) VALUES ({$placeholders})", $values);
+
+        // Save mitra mapping if provided
+        if (!empty($data['mitra_id']) || !empty($data['mitra_region']) || !empty($data['mitra_share'])) {
+            try {
+                ensureMitraMappingTable();
+                upsertMitraMapping($newId, (int)($data['mitra_id'] ?? 0), (string)($data['mitra_region'] ?? ''), (float)($data['mitra_share'] ?? 0));
+            } catch (Throwable $te) { error_log('Mitra mapping (create) failed: ' . $te->getMessage()); }
+        }
+
+        // Provisioning depending on Source of Truth
+        $source = getSetting('source_of_truth', 'radius');
+        $hasRouter = !empty($data['router_id']);
+        $hasPPP = !empty($data['pppoe_user']) && !empty($data['pppoe_pass']);
+        if ($hasPPP) {
+            if ($source === 'mikrotik' && $hasRouter) {
+                try {
+                    $api = MtkFactory::createFromRouter((int)$data['router_id']);
+                    $profile = !empty($data['profile_aktif']) ? $data['profile_aktif'] : getSetting('profile_default', 'default');
+                    $api->createSecret($data['pppoe_user'], $data['pppoe_pass'], $profile, 'pppoe');
+                    if (($data['status'] ?? 'active') === 'active') {
+                        $api->enable($data['pppoe_user']);
+                    }
+                    if (isset($GLOBALS['logger'])) {
+                        $GLOBALS['logger']->logISP('provision_create', (int)$newId, [
+                            'pppoe_user' => $data['pppoe_user'],
+                            'router_id' => (int)$data['router_id'],
+                            'profile' => $profile,
+                            'source' => 'mikrotik',
+                        ]);
+                    }
+                } catch (Throwable $te) {
+                    error_log('MikroTik provisioning (create) failed: ' . $te->getMessage());
+                }
+            } elseif ($source === 'radius') {
+                try {
+                    $radius = new RadiusSqlCoa();
+                    $radius->upsertUser($data['pppoe_user'], $data['pppoe_pass']);
+                    $profile = !empty($data['profile_aktif']) ? $data['profile_aktif'] : getSetting('profile_default', 'default');
+                    $radius->setGroup($data['pppoe_user'], $profile);
+                    // Apply rate-limit based on package, if available
+                    if (!empty($data['paket'])) {
+                        $rate = getRateLimitForPackage($data['paket']);
+                        if ($rate) {
+                            $radius->setRateLimit($data['pppoe_user'], $rate);
+                        }
+                    }
+                    if (isset($GLOBALS['logger'])) {
+                        $GLOBALS['logger']->logISP('provision_create', (int)$newId, [
+                            'pppoe_user' => $data['pppoe_user'],
+                            'profile' => $profile,
+                            'source' => 'radius',
+                        ]);
+                    }
+                } catch (Throwable $te) {
+                    error_log('RADIUS provisioning (create) failed: ' . $te->getMessage());
+                }
+            }
+        }
+
+        successResponse(['id' => $newId], 'Customer created successfully.');
+    } catch (Exception $e) {
+        error_log("Customer Create Error: " . $e->getMessage());
+        errorResponse('Database error while creating customer.', 500);
+    }
+}
+
+function handleUpdate() {
+    global $db;
+    $data = $_POST;
+    $id = $data['id'] ?? null;
+
+    if (!$id) {
+        errorResponse('Customer ID is required for update.', 400);
+    }
+
+    if (!empty($data['pppoe_pass'])) {
+        $data['pppoe_pass_enc'] = encryptData($data['pppoe_pass']);
+    }
+
+    $fields = ['nama', 'email', 'telp', 'alamat', 'lat', 'lon', 'paket', 'status', 'router_id', 'pppoe_user', 'pppoe_pass_enc', 'profile_aktif', 'profile_isolir'];
+    $setClauses = [];
+    $params = [];
+    foreach ($fields as $field) {
+        if (array_key_exists($field, $data)) {
+            $setClauses[] = "$field = ?";
+            $params[] = $data[$field];
         }
     }
 
-    // Log provisioning result
-    global $logger;
-    $logger->log('customer_provision', [
-        'customer_id' => $customerId,
-        'source' => $sourceOfTruth,
-        'result' => $result ?? 'no_provisioning_needed'
-    ]);
+    if (empty($setClauses)) {
+        errorResponse('No fields to update.', 400);
+    }
+
+    $params[] = $id;
+
+    try {
+        $db->execute('UPDATE pelanggan SET ' . implode(', ', $setClauses) . ' WHERE id = ?', $params);
+
+        // Save mitra mapping if provided
+        if (!empty($data['id']) && (isset($data['mitra_id']) || isset($data['mitra_region']) || isset($data['mitra_share']))) {
+            try {
+                ensureMitraMappingTable();
+                upsertMitraMapping((int)$data['id'], (int)($data['mitra_id'] ?? 0), (string)($data['mitra_region'] ?? ''), (float)($data['mitra_share'] ?? 0));
+            } catch (Throwable $te) { error_log('Mitra mapping (update) failed: ' . $te->getMessage()); }
+        }
+
+        // If PPP password provided, update according to Source of Truth
+        if (!empty($data['pppoe_user']) && !empty($data['pppoe_pass'])) {
+            $source = getSetting('source_of_truth', 'radius');
+            if ($source === 'mikrotik' && !empty($data['router_id'])) {
+                try {
+                    $api = MtkFactory::createFromRouter((int)$data['router_id']);
+                    $api->updateSecret($data['pppoe_user'], ['password' => $data['pppoe_pass']]);
+                } catch (Throwable $te) {
+                    error_log('MikroTik provisioning (update) failed: ' . $te->getMessage());
+                }
+            } elseif ($source === 'radius') {
+                try {
+                    // Re-upsert only password and re-apply group to preserve
+                    $radius = new RadiusSqlCoa();
+                    $radius->upsertUser($data['pppoe_user'], $data['pppoe_pass']);
+                    $profile = !empty($data['profile_aktif']) ? $data['profile_aktif'] : getSetting('profile_default', 'default');
+                    $radius->setGroup($data['pppoe_user'], $profile);
+                    // Update rate-limit from current package
+                    $row = $db->fetchOne('SELECT paket FROM pelanggan WHERE id = ?', [$id]);
+                    if ($row && !empty($row['paket'])) {
+                        $rate = getRateLimitForPackage($row['paket']);
+                        if ($rate) {
+                            $radius->setRateLimit($data['pppoe_user'], $rate);
+                        }
+                    }
+                } catch (Throwable $te) {
+                    error_log('RADIUS provisioning (update) failed: ' . $te->getMessage());
+                }
+            }
+        }
+
+        successResponse([], 'Customer updated successfully.');
+    } catch (Exception $e) {
+        error_log("Customer Update Error: " . $e->getMessage());
+        errorResponse('Database error while updating customer.', 500);
+    }
+}
+
+function handleDelete($customerId) {
+    global $db;
+    if (!$customerId) {
+        errorResponse('Customer ID is required', 400);
+    }
+    try {
+        $db->execute('DELETE FROM pelanggan WHERE id = ?', [$customerId]);
+        successResponse([], 'Customer deleted successfully.');
+    } catch (Exception $e) {
+        error_log("Customer Delete Error: " . $e->getMessage());
+        errorResponse('Failed to delete customer.', 500);
+    }
+}
+
+function handleToggleStatus($customerId, $action) {
+    global $db;
+    if (!$customerId) {
+        errorResponse('Customer ID is required', 400);
+    }
+
+    $newStatus = ($action === 'isolir') ? 'isolir' : 'active';
+
+    try {
+        // Fetch provisioning info
+        $customer = $db->fetchOne('SELECT id, router_id, pppoe_user, profile_aktif, profile_isolir FROM pelanggan WHERE id = ?', [$customerId]);
+
+        // Update DB status first
+        $db->execute('UPDATE pelanggan SET status = ? WHERE id = ?', [$newStatus, $customerId]);
+
+        // Provision based on Source of Truth
+        $source = getSetting('source_of_truth', 'radius');
+        $username = $customer['pppoe_user'] ?? '';
+        if ($username) {
+            if ($source === 'mikrotik' && !empty($customer['router_id'])) {
+                try {
+                    $api = MtkFactory::createFromRouter((int)$customer['router_id']);
+                    if ($newStatus === 'active') {
+                        $profile = !empty($customer['profile_aktif']) ? $customer['profile_aktif'] : getSetting('profile_default', 'default');
+                        $api->setPppSecretProfile($username, $profile);
+                        $api->enable($username);
+                    } else {
+                        $profile = !empty($customer['profile_isolir']) ? $customer['profile_isolir'] : getSetting('profile_isolir', 'ISOLIR');
+                        $api->setPppSecretProfile($username, $profile);
+                        $api->disable($username);
+                        $api->disconnectActive($username);
+                    }
+                    if (isset($GLOBALS['logger'])) {
+                        $GLOBALS['logger']->logISP('provision_toggle', (int)$customerId, [
+                            'status' => $newStatus,
+                            'pppoe_user' => $username,
+                            'router_id' => (int)$customer['router_id'],
+                            'profile' => $profile ?? null,
+                            'source' => 'mikrotik',
+                        ]);
+                    }
+                } catch (Throwable $te) {
+                    error_log('MikroTik provisioning (toggle) failed: ' . $te->getMessage());
+                }
+            } elseif ($source === 'radius') {
+                try {
+                    $radius = new RadiusSqlCoa();
+                    if ($newStatus === 'active') {
+                        $profile = !empty($customer['profile_aktif']) ? $customer['profile_aktif'] : getSetting('profile_default', 'default');
+                        $radius->setGroup($username, $profile);
+                        // Apply rate-limit based on package
+                        $row = $db->fetchOne('SELECT paket FROM pelanggan WHERE id = ?', [$customerId]);
+                        if ($row && !empty($row['paket'])) {
+                            $rate = getRateLimitForPackage($row['paket']);
+                            if ($rate) {
+                                $radius->setRateLimit($username, $rate);
+                            }
+                        }
+                    } else {
+                        $profile = !empty($customer['profile_isolir']) ? $customer['profile_isolir'] : getSetting('profile_isolir', 'ISOLIR');
+                        $radius->setGroup($username, $profile);
+                        // Optional: limit isolir to minimal bandwidth
+                        $radius->setRateLimit($username, '1M/1M');
+                    }
+                    $radius->sendCoA($username);
+                    if (isset($GLOBALS['logger'])) {
+                        $GLOBALS['logger']->logISP('provision_toggle', (int)$customerId, [
+                            'status' => $newStatus,
+                            'pppoe_user' => $username,
+                            'profile' => $profile ?? null,
+                            'source' => 'radius',
+                        ]);
+                    }
+                } catch (Throwable $te) {
+                    error_log('RADIUS provisioning (toggle) failed: ' . $te->getMessage());
+                }
+            }
+        }
+
+        successResponse([], "Customer status changed to {$newStatus}.");
+    } catch (Exception $e) {
+        error_log("Customer Status Toggle Error: " . $e->getMessage());
+        errorResponse('Failed to toggle customer status.', 500);
+    }
+}
+
+// Helpers for rate-limit from package
+function getRateLimitForPackage($packageName) {
+    global $db;
+    if (empty($packageName)) return null;
+    $pkg = $db->fetchOne('SELECT speed FROM isp_packages WHERE name = ? OR code = ?', [$packageName, $packageName]);
+    if (!$pkg) return null;
+    return parseSpeedToRateLimit($pkg['speed'] ?? '');
+}
+
+// Mitra mapping helpers
+function ensureMitraMappingTable() {
+    global $db;
+    // Create mapping table if not exists
+    $sql = "CREATE TABLE IF NOT EXISTS isp_agent_customers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        customer_id INT NOT NULL,
+        agent_id INT NULL,
+        region VARCHAR(150) NULL,
+        share_percent DECIMAL(5,2) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_customer (customer_id)
+    )";
+    $db->execute($sql);
+}
+
+function upsertMitraMapping(int $customerId, int $agentId, string $region, float $sharePercent) {
+    global $db;
+    $existing = $db->fetchOne('SELECT id FROM isp_agent_customers WHERE customer_id = ?', [$customerId]);
+    if ($existing) {
+        $db->execute('UPDATE isp_agent_customers SET agent_id = ?, region = ?, share_percent = ? WHERE customer_id = ?', [$agentId ?: null, $region ?: null, $sharePercent, $customerId]);
+    } else {
+        $db->execute('INSERT INTO isp_agent_customers (customer_id, agent_id, region, share_percent) VALUES (?, ?, ?, ?)', [$customerId, $agentId ?: null, $region ?: null, $sharePercent]);
+    }
+}
+
+function parseSpeedToRateLimit($speed) {
+    if (!$speed) return null;
+    // Normalize: extract first number and unit
+    $s = trim(strtolower($speed));
+    if (!preg_match('/([0-9]+\.?[0-9]*)\s*([kmgt]?)(b|bps|bit|mbps|kbps|gbps|m|k|g)?/i', $s, $m)) {
+        return null;
+    }
+    $num = (float)$m[1];
+    $unit = isset($m[2]) ? $m[2] : '';
+    $unit2 = isset($m[3]) ? strtolower($m[3]) : '';
+    // Determine in M (Megabit)
+    $mult = 1.0; // default assume M
+    if ($unit === 'g' || $unit2 === 'gbps' || $unit2 === 'g') { $mult = 1000.0; }
+    elseif ($unit === 'k' || $unit2 === 'kbps' || $unit2 === 'k') { $mult = 0.001; }
+    elseif ($unit === 'm' || $unit2 === 'mbps' || $unit2 === 'm') { $mult = 1.0; }
+    // Convert to M
+    $mval = max(0.1, $num * $mult);
+    // Format as Mikrotik-Rate-Limit string: "XM/XM"
+    // Round to integer if >=1, else keep one decimal
+    $fmt = ($mval >= 1) ? (string)round($mval) : number_format($mval, 1);
+    return $fmt . 'M/' . $fmt . 'M';
 }

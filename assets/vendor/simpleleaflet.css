@@ -1,0 +1,89 @@
+.simple-leaflet-map {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #cfe4ff 0%, #e3f2ff 45%, #f8fafc 100%);
+    border-radius: 18px;
+}
+
+.simple-leaflet-tiles,
+.simple-leaflet-markers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.simple-leaflet-tile {
+    position: absolute;
+    width: 256px;
+    height: 256px;
+    pointer-events: none;
+    background: #d0e4f7;
+}
+
+.simple-leaflet-marker {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.simple-leaflet-marker-icon {
+    width: 22px;
+    height: 22px;
+    background: #2563eb;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+.simple-leaflet-marker-label {
+    position: absolute;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: rgba(15, 23, 42, 0.75);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.simple-leaflet-popup {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    background: #fff;
+    padding: 12px 14px;
+    border-radius: 12px;
+    box-shadow: 0 18px 35px rgba(15, 23, 42, 0.28);
+    max-width: 240px;
+    pointer-events: auto;
+    z-index: 50;
+}
+
+.simple-leaflet-popup::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    inset-block-end: -8px;
+    border-width: 8px;
+    border-style: solid;
+    border-color: #fff transparent transparent transparent;
+}
+
+.simple-leaflet-popup-close {
+    position: absolute;
+    inset-inline-end: 8px;
+    inset-block-start: 8px;
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.simple-leaflet-map.dragging {
+    cursor: grabbing;
+}

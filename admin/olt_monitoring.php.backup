@@ -1,0 +1,1000 @@
+<?php
+// OLT Monitoring Admin Dashboard
+
+require_once __DIR__ . '/../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/olt_monitoring.php';
+
+$guard = RouterGuard::getInstance();
+$guard->requirePermission('admin.dashboard');
+
+$user = getCurrentUser();
+OltMonitoring::boot();
+$csrfToken = getCsrfToken();
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OLT Monitoring - SolusiPaymentManagement</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar { min-height: 100vh; }
+        .summary-card { min-height: 140px; }
+        .status-badge { text-transform: uppercase; font-size: 0.75rem; }
+        .table-responsive { overflow-x: auto; }
+        .badge-dot { display: inline-flex; align-items: center; gap: .35rem; }
+        .badge-dot::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: currentColor;
+        }
+        .event-list { max-height: 360px; overflow-y: auto; }
+        .ont-status-online { color: #198754; }
+        .ont-status-offline { color: #dc3545; }
+        .ont-status-los { color: #fd7e14; }
+        @media (max-width: 767.98px) {
+            .sidebar { transform: translateX(-100%); transition: transform .2s ease-in-out; width: 250px; z-index: 1040; }
+            body.sidebar-open .sidebar { transform: translateX(0); }
+            .main-content { margin-left: 0 !important; }
+        }
+        @media (min-width: 768px) {
+            .main-content { margin-left: 260px !important; }
+        }
+    </style>
+</head>
+<body>
+<?php include __DIR__ . '/../includes/admin_sidebar.php'; ?>
+<div class="main-content">
+    <div class="d-md-none p-2 border-bottom bg-white position-sticky top-0" style="z-index: 1030;">
+        <button class="btn btn-outline-secondary" onclick="toggleSidebar(true)"><i class="fas fa-bars"></i></button>
+    </div>
+    <div class="container-fluid p-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+            <div>
+                <h2 class="mb-1">OLT Monitoring Dashboard</h2>
+                <span class="text-muted">Terintegrasi dengan SolusiPaymentManagement • Pengguna: <?php echo sanitizeOutput($user['nama']); ?></span>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <button id="btn-refresh-sample" class="btn btn-outline-primary">
+                    <i class="fas fa-sync-alt me-2"></i>Generate Data Demo
+                </button>
+                <button id="btn-open-create" class="btn btn-primary">
+                    <i class="fas fa-plus-circle me-2"></i>Tambah Perangkat
+                </button>
+            </div>
+        </div>
+
+        <div id="alert-container"></div>
+
+        <div class="row g-3 mb-4" id="summary-cards">
+            <div class="col-6 col-lg-3">
+                <div class="card summary-card border-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-muted text-uppercase small">Total OLT</span>
+                                <h3 class="mb-0" id="summary-total-olts">0</h3>
+                            </div>
+                            <div class="text-primary"><i class="fas fa-network-wired fa-2x"></i></div>
+                        </div>
+                        <p class="text-muted small mt-2 mb-0">Jumlah perangkat terdaftar</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card summary-card border-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-muted text-uppercase small">OLT Online</span>
+                                <h3 class="mb-0" id="summary-online-olts">0</h3>
+                            </div>
+                            <div class="text-success"><i class="fas fa-satellite-dish fa-2x"></i></div>
+                        </div>
+                        <p class="text-muted small mt-2 mb-0">Perangkat aktif dan merespon</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card summary-card border-info">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-muted text-uppercase small">Total ONT</span>
+                                <h3 class="mb-0" id="summary-total-onts">0</h3>
+                            </div>
+                            <div class="text-info"><i class="fas fa-plug fa-2x"></i></div>
+                        </div>
+                        <p class="text-muted small mt-2 mb-0">Perangkat pelanggan terpantau</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card summary-card border-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-muted text-uppercase small">Alarm Aktif</span>
+                                <h3 class="mb-0" id="summary-warnings">0</h3>
+                            </div>
+                            <div class="text-warning"><i class="fas fa-exclamation-triangle fa-2x"></i></div>
+                        </div>
+                        <p class="text-muted small mt-2 mb-0">Power dan jarak di luar batas aman</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs" id="olt-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button" role="tab">Ringkasan</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="devices-tab" data-bs-toggle="tab" data-bs-target="#tab-devices" type="button" role="tab">Perangkat OLT</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="onts-tab" data-bs-toggle="tab" data-bs-target="#tab-onts" type="button" role="tab">ONT & Pelanggan</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#tab-events" type="button" role="tab">Event & Alarm</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#tab-settings" type="button" role="tab">Pengaturan</button>
+            </li>
+        </ul>
+
+        <div class="tab-content border border-top-0 rounded-bottom p-3 bg-white" id="olt-tabs-content">
+            <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+                <div class="row g-3">
+                    <div class="col-lg-8">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Event Terbaru</h5>
+                                <button class="btn btn-sm btn-outline-secondary" id="btn-refresh-events">
+                                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                                </button>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="event-list list-group list-group-flush" id="recent-events-list">
+                                    <div class="text-center text-muted py-4" id="events-placeholder">
+                                        <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
+                                        <div>Memuat event...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">Status Alarm</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush" id="warnings-summary">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        RX Power <span class="badge bg-warning" id="warning-power-count">0</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Distance <span class="badge bg-warning" id="warning-distance-count">0</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Legend Status ONT</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-2"><span class="badge-dot text-success"></span> Online</p>
+                                <p class="mb-2"><span class="badge-dot text-danger"></span> Offline</p>
+                                <p class="mb-0"><span class="badge-dot text-warning"></span> LOS (Loss of Signal)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tab-devices" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nama Perangkat</th>
+                                <th>Alamat IP</th>
+                                <th>Tipe</th>
+                                <th>Status</th>
+                                <th>ONT Aktif</th>
+                                <th>Diperbarui</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="devices-table-body">
+                            <tr><td colspan="7" class="text-center text-muted py-4">Memuat data perangkat...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tab-onts" role="tabpanel">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label for="filter-olt" class="form-label mb-1">Filter OLT</label>
+                        <select id="filter-olt" class="form-select">
+                            <option value="">Semua perangkat</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filter-status" class="form-label mb-1">Status ONT</label>
+                        <select id="filter-status" class="form-select">
+                            <option value="">Semua status</option>
+                            <option value="online">Online</option>
+                            <option value="offline">Offline</option>
+                            <option value="los">LOS</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filter-search" class="form-label mb-1">Pencarian</label>
+                        <input type="text" id="filter-search" class="form-control" placeholder="Nama pelanggan / Port / ONT">
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Pelanggan / Serial</th>
+                                <th>OLT</th>
+                                <th>Port / ONT</th>
+                                <th>Status</th>
+                                <th>RX Power</th>
+                                <th>TX Power</th>
+                                <th>Distance</th>
+                                <th>Terakhir Online</th>
+                            </tr>
+                        </thead>
+                        <tbody id="onts-table-body">
+                            <tr><td colspan="8" class="text-center text-muted py-4">Belum ada data ONT</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tab-events" role="tabpanel">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <select id="filter-event-severity" class="form-select w-auto">
+                        <option value="">Semua severity</option>
+                        <option value="info">Info</option>
+                        <option value="warning">Warning</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                    <select id="filter-event-olt" class="form-select w-auto">
+                        <option value="">Semua OLT</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" id="btn-refresh-events-table">
+                        <i class="fas fa-sync-alt me-1"></i>Muat ulang
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Waktu</th>
+                                <th>OLT</th>
+                                <th>ONT</th>
+                                <th>Severity</th>
+                                <th>Judul</th>
+                                <th>Deskripsi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="events-table-body">
+                            <tr><td colspan="6" class="text-center text-muted py-4">Belum ada event</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tab-settings" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">Pengaturan Sistem</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="settings-form">
+                                    <div class="mb-3">
+                                        <label for="setting-system-name" class="form-label">Nama Sistem</label>
+                                        <input type="text" class="form-control" id="setting-system-name" name="system_name">
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="setting-polling-interval" class="form-label">Interval Polling (detik)</label>
+                                                <input type="number" min="30" class="form-control" id="setting-polling-interval" name="polling_interval">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Aktifkan Polling</label>
+                                                <select class="form-select" id="setting-polling-enabled" name="polling_enabled">
+                                                    <option value="1">Aktif</option>
+                                                    <option value="0">Nonaktif</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="mb-3">
+                                        <label class="form-label">Notifikasi Telegram</label>
+                                        <select class="form-select" id="setting-notif-enabled" name="notifications_enabled">
+                                            <option value="1">Aktif</option>
+                                            <option value="0">Nonaktif</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="setting-telegram-token" class="form-label">Bot Token</label>
+                                        <input type="text" class="form-control" id="setting-telegram-token" name="telegram_bot_token" placeholder="123456:ABC-DEF1234...">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="setting-telegram-chat" class="form-label">Chat ID</label>
+                                        <input type="text" class="form-control" id="setting-telegram-chat" name="telegram_chat_id" placeholder="-1001234567890">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Simpan Pengaturan
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Ambang Batas (Threshold)</h5>
+                                <button class="btn btn-sm btn-outline-secondary" id="btn-reset-thresholds">
+                                    <i class="fas fa-undo me-1"></i>Reset Default
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <form id="thresholds-form">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered align-middle">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Metric</th>
+                                                    <th>Level</th>
+                                                    <th>Min</th>
+                                                    <th>Max</th>
+                                                    <th>Severity</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="thresholds-table-body"></tbody>
+                                        </table>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Simpan Threshold
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Device Modal -->
+<div class="modal fade" id="deviceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deviceModalLabel">Tambah Perangkat OLT</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="device-form">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="device-id">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nama Perangkat</label>
+                            <input type="text" class="form-control" name="name" id="device-name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Lokasi</label>
+                            <input type="text" class="form-control" name="location" id="device-location">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Alamat IP</label>
+                            <input type="text" class="form-control" name="ip_address" id="device-ip" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Port</label>
+                            <input type="number" class="form-control" name="port" id="device-port" min="1" value="22">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Jumlah Port PON</label>
+                            <input type="number" class="form-control" name="total_ports" id="device-total-ports" min="1" max="16" value="4">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Metode Polling</label>
+                            <select class="form-select" name="polling_method" id="device-polling-method">
+                                <option value="ssh">SSH</option>
+                                <option value="snmp">SNMP</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipe OLT</label>
+                            <select class="form-select" name="device_type" id="device-type">
+                                <option value="epon">EPON</option>
+                                <option value="gpon">GPON</option>
+                                <option value="zte">ZTE</option>
+                                <option value="huawei">Huawei</option>
+                                <option value="other">Lainnya</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" name="username" id="device-username">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Password</label>
+                            <input type="text" class="form-control" name="password" id="device-password">
+                        </div>
+                        <div class="col-md-6 snmp-group d-none">
+                            <label class="form-label">SNMP Community</label>
+                            <input type="text" class="form-control" name="snmp_community" id="device-snmp-community" value="public">
+                        </div>
+                        <div class="col-md-6 snmp-group d-none">
+                            <label class="form-label">SNMP Version</label>
+                            <select class="form-select" name="snmp_version" id="device-snmp-version">
+                                <option value="v2c">v2c</option>
+                                <option value="v3">v3</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Simpan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const csrfToken = '<?php echo $csrfToken; ?>';
+let deviceModal;
+
+document.addEventListener('DOMContentLoaded', () => {
+    deviceModal = new bootstrap.Modal(document.getElementById('deviceModal'));
+    setupEventHandlers();
+    loadSummary();
+    loadDevices();
+    loadOnts();
+    loadEvents();
+    loadSettings();
+});
+
+function setupEventHandlers() {
+    document.getElementById('btn-refresh-sample').addEventListener('click', () => {
+        generateSampleData();
+    });
+
+    document.getElementById('btn-open-create').addEventListener('click', () => {
+        openDeviceModal();
+    });
+
+    document.getElementById('device-polling-method').addEventListener('change', toggleSnmpFields);
+    document.getElementById('device-form').addEventListener('submit', submitDeviceForm);
+
+    document.getElementById('filter-olt').addEventListener('change', loadOnts);
+    document.getElementById('filter-status').addEventListener('change', loadOnts);
+    document.getElementById('filter-search').addEventListener('input', debounce(loadOnts, 400));
+
+    document.getElementById('btn-refresh-events').addEventListener('click', loadEvents);
+    document.getElementById('btn-refresh-events-table').addEventListener('click', loadEventsTable);
+    document.getElementById('filter-event-severity').addEventListener('change', loadEventsTable);
+    document.getElementById('filter-event-olt').addEventListener('change', loadEventsTable);
+
+    document.getElementById('settings-form').addEventListener('submit', submitSettingsForm);
+    document.getElementById('thresholds-form').addEventListener('submit', submitThresholdsForm);
+    document.getElementById('btn-reset-thresholds').addEventListener('click', resetThresholdDefaults);
+}
+
+function loadSummary() {
+    fetch('/api/admin/olt_monitoring.php?action=summary', { headers: buildHeaders() })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) {
+                throw new Error(response.message || 'Gagal memuat ringkasan');
+            }
+            const data = response.data || {};
+            document.getElementById('summary-total-olts').textContent = data.olts?.total ?? 0;
+            document.getElementById('summary-online-olts').textContent = data.olts?.online ?? 0;
+            const totalWarnings = (data.warnings?.power ?? 0) + (data.warnings?.distance ?? 0);
+            document.getElementById('summary-warnings').textContent = totalWarnings;
+            document.getElementById('warning-power-count').textContent = data.warnings?.power ?? 0;
+            document.getElementById('warning-distance-count').textContent = data.warnings?.distance ?? 0;
+
+            document.getElementById('summary-total-onts').textContent = data.onts?.total ?? 0;
+
+            renderRecentEvents(data.recent_events || []);
+        })
+        .catch(error => showAlert(error.message, 'danger'));
+}
+
+function loadDevices() {
+    fetch('/api/admin/olt_monitoring.php?action=devices', { headers: buildHeaders() })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) throw new Error(response.message || 'Gagal memuat perangkat');
+            renderDevices(response.data?.devices || []);
+            populateOltFilters(response.data?.devices || []);
+        })
+        .catch(error => showAlert(error.message, 'danger'));
+}
+
+function loadOnts() {
+    const params = new URLSearchParams({
+        olt_id: document.getElementById('filter-olt').value,
+        status: document.getElementById('filter-status').value,
+        search: document.getElementById('filter-search').value
+    });
+
+    fetch('/api/admin/olt_monitoring.php?action=onts&' + params.toString(), { headers: buildHeaders() })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) throw new Error(response.message || 'Gagal memuat ONT');
+            renderOnts(response.data?.onts || []);
+        })
+        .catch(error => showAlert(error.message, 'danger'));
+}
+
+function loadEvents() {
+    loadSummary();
+    loadEventsTable();
+}
+
+function loadEventsTable() {
+    const params = new URLSearchParams({
+        severity: document.getElementById('filter-event-severity').value,
+        olt_id: document.getElementById('filter-event-olt').value,
+        limit: 100
+    });
+
+    fetch('/api/admin/olt_monitoring.php?action=events&' + params.toString(), { headers: buildHeaders() })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) throw new Error(response.message || 'Gagal memuat event');
+            renderEventsTable(response.data?.events || []);
+        })
+        .catch(error => showAlert(error.message, 'danger'));
+}
+
+function loadSettings() {
+    fetch('/api/admin/olt_monitoring.php?action=settings', { headers: buildHeaders() })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) throw new Error(response.message || 'Gagal memuat pengaturan');
+            applySettingsForm(response.data?.settings || {});
+            return fetch('/api/admin/olt_monitoring.php?action=thresholds', { headers: buildHeaders() });
+        })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) throw new Error(response.message || 'Gagal memuat threshold');
+            renderThresholds(response.data?.thresholds || {});
+        })
+        .catch(error => showAlert(error.message, 'danger'));
+}
+
+function submitDeviceForm(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+    const payload = Object.fromEntries(formData.entries());
+    const isEdit = payload.id && payload.id !== '';
+    const action = isEdit ? 'update_device' : 'create_device';
+
+    fetch('/api/admin/olt_monitoring.php?action=' + action, {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify(payload)
+    })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) throw new Error(response.message || 'Gagal menyimpan perangkat');
+            deviceModal.hide();
+            showAlert(response.message || 'Perangkat disimpan', 'success');
+            loadDevices();
+            loadOnts();
+        })
+        .catch(error => showAlert(error.message, 'danger'));
+}
+
+function submitSettingsForm(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const settings = {};
+    formData.forEach((value, key) => { settings[key] = value; });
+
+    fetch('/api/admin/olt_monitoring.php?action=save_settings', {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify({ settings })
+    })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) throw new Error(response.message || 'Gagal menyimpan pengaturan');
+            showAlert('Pengaturan berhasil disimpan', 'success');
+        })
+        .catch(error => showAlert(error.message, 'danger'));
+}
+
+function submitThresholdsForm(event) {
+    event.preventDefault();
+    const thresholds = {};
+    document.querySelectorAll('#thresholds-table-body tr').forEach(row => {
+        const metric = row.dataset.metric;
+        const level = row.dataset.level;
+        thresholds[metric] = thresholds[metric] || {};
+        thresholds[metric][level] = {
+            min_value: row.querySelector('.input-min').value || null,
+            max_value: row.querySelector('.input-max').value || null,
+            severity: row.querySelector('.input-severity').value,
+            enabled: row.querySelector('.input-enabled').checked ? 1 : 0,
+            unit: row.dataset.unit || null
+        };
+    });
+
+    fetch('/api/admin/olt_monitoring.php?action=save_thresholds', {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify({ thresholds })
+    })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) throw new Error(response.message || 'Gagal menyimpan threshold');
+            showAlert('Threshold berhasil diperbarui', 'success');
+        })
+        .catch(error => showAlert(error.message, 'danger'));
+}
+
+function resetThresholdDefaults() {
+    if (!confirm('Yakin ingin mengembalikan threshold ke nilai default?')) return;
+    fetch('/api/admin/olt_monitoring.php?action=thresholds', { headers: buildHeaders() })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) throw new Error(response.message || 'Gagal memuat threshold');
+            renderThresholds(response.data?.thresholds || {});
+            showAlert('Threshold dikembalikan ke nilai awal', 'info');
+        })
+        .catch(error => showAlert(error.message, 'danger'));
+}
+
+function generateSampleData(deviceId = null) {
+    const payload = {};
+    if (deviceId) payload.device_id = deviceId;
+
+    fetch('/api/admin/olt_monitoring.php?action=refresh_sample', {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify(payload)
+    })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) throw new Error(response.message || 'Gagal memperbarui data');
+            showAlert('Data sample berhasil diperbarui', 'success');
+            loadSummary();
+            loadOnts();
+            loadEventsTable();
+            loadDevices();
+        })
+        .catch(error => showAlert(error.message, 'danger'));
+}
+
+function renderDevices(devices) {
+    const tbody = document.getElementById('devices-table-body');
+    if (!devices.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Belum ada perangkat terdaftar</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = devices.map(device => {
+        const statusBadge = device.status === 'online'
+            ? '<span class="badge bg-success">Online</span>'
+            : '<span class="badge bg-secondary">Offline</span>';
+        const updatedAt = device.updated_at ? new Date(device.updated_at).toLocaleString('id-ID') : '-';
+        const ontInfo = `${device.online_onts ?? 0}/${device.total_onts ?? 0}`;
+        return `
+            <tr>
+                <td>
+                    <strong>${escapeHtml(device.name)}</strong><br>
+                    <small class="text-muted">${escapeHtml(device.location ?? '-')}</small>
+                </td>
+                <td>${escapeHtml(device.ip_address)}<br><small class="text-muted">Port ${device.port}</small></td>
+                <td>${escapeHtml(device.device_type ?? '-')}</td>
+                <td>${statusBadge}</td>
+                <td>${ontInfo}</td>
+                <td>${updatedAt}</td>
+                <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="openDeviceModal(${device.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteDevice(${device.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="generateSampleData(${device.id})">
+                            <i class="fas fa-magic"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderOnts(onts) {
+    const tbody = document.getElementById('onts-table-body');
+    if (!onts.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Belum ada data ONT untuk filter yang dipilih</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = onts.map(ont => {
+        const statusClass = `ont-status-${ont.status ?? 'offline'}`;
+        const statusLabel = ont.status ? ont.status.toUpperCase() : 'UNKNOWN';
+        const rxPower = ont.rx_power !== null ? `${ont.rx_power.toFixed(2)} dBm` : '-';
+        const txPower = ont.tx_power !== null ? `${ont.tx_power.toFixed(2)} dBm` : '-';
+        const distance = ont.distance !== null ? `${ont.distance.toFixed(2)} km` : '-';
+        const lastSeen = ont.last_seen ? new Date(ont.last_seen).toLocaleString('id-ID') : '-';
+        return `
+            <tr>
+                <td>
+                    <strong>${escapeHtml(ont.customer_name ?? 'ONT')}</strong><br>
+                    <small class="text-muted">${escapeHtml(ont.serial_number ?? '-')}</small>
+                </td>
+                <td>${escapeHtml(ont.olt_name ?? '-')}<br><small class="text-muted">${escapeHtml(ont.olt_ip ?? '')}</small></td>
+                <td>${escapeHtml(ont.pon_port ?? '-')} / ${escapeHtml(ont.ont_number ?? '-')}</td>
+                <td><span class="${statusClass}">${statusLabel}</span></td>
+                <td>${rxPower}</td>
+                <td>${txPower}</td>
+                <td>${distance}</td>
+                <td>${lastSeen}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderEventsTable(events) {
+    const tbody = document.getElementById('events-table-body');
+    if (!events.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Belum ada event untuk filter ini</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = events.map(event => {
+        const timestamp = event.created_at ? new Date(event.created_at).toLocaleString('id-ID') : '-';
+        const severityBadge = {
+            info: 'bg-info',
+            warning: 'bg-warning text-dark',
+            critical: 'bg-danger'
+        }[event.severity ?? 'info'] || 'bg-secondary';
+
+        const ontLabel = event.pon_port ? `${event.pon_port}/${event.ont_number ?? '-'}` : '-';
+        return `
+            <tr>
+                <td>${timestamp}</td>
+                <td>${escapeHtml(event.olt_name ?? '-')}</td>
+                <td>${escapeHtml(ontLabel)}</td>
+                <td><span class="badge ${severityBadge}">${event.severity?.toUpperCase() ?? 'INFO'}</span></td>
+                <td>${escapeHtml(event.title ?? '-')}</td>
+                <td>${escapeHtml(event.description ?? '-')}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderRecentEvents(events) {
+    const container = document.getElementById('recent-events-list');
+    const placeholder = document.getElementById('events-placeholder');
+    if (placeholder) placeholder.remove();
+
+    if (!events.length) {
+        container.innerHTML = '<div class="text-muted text-center py-4">Belum ada event tercatat</div>';
+        return;
+    }
+
+    container.innerHTML = events.map(event => {
+        const time = event.created_at ? new Date(event.created_at).toLocaleString('id-ID') : '-';
+        const severityBadge = {
+            info: 'bg-info',
+            warning: 'bg-warning text-dark',
+            critical: 'bg-danger'
+        }[event.severity ?? 'info'] || 'bg-secondary';
+        return `
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between">
+                    <strong>${escapeHtml(event.title ?? '-')}</strong>
+                    <span class="badge ${severityBadge}">${event.severity?.toUpperCase() ?? 'INFO'}</span>
+                </div>
+                <div class="small text-muted mb-2">
+                    ${escapeHtml(event.olt_name ?? '-')} • ${escapeHtml(event.pon_port ? event.pon_port + '/' + (event.ont_number ?? '-') : 'ONT -')}
+                </div>
+                <div>${escapeHtml(event.description ?? '-')}</div>
+                <div class="text-muted small mt-1">${time}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderThresholds(thresholds) {
+    const tbody = document.getElementById('thresholds-table-body');
+    const rows = [];
+    Object.entries(thresholds).forEach(([metric, levels]) => {
+        Object.entries(levels).forEach(([level, config]) => {
+            const enabled = Number(config.enabled ?? 1) === 1;
+            rows.push(`
+                <tr data-metric="${metric}" data-level="${level}" data-unit="${config.unit ?? ''}">
+                    <td><strong>${metric.toUpperCase()}</strong></td>
+                    <td>${level.toUpperCase()}</td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm input-min" value="${config.min_value ?? ''}"></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm input-max" value="${config.max_value ?? ''}"></td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select form-select-sm input-severity" style="width: 120px;">
+                                <option value="info" ${config.severity === 'info' ? 'selected' : ''}>Info</option>
+                                <option value="warning" ${config.severity === 'warning' ? 'selected' : ''}>Warning</option>
+                                <option value="critical" ${config.severity === 'critical' ? 'selected' : ''}>Critical</option>
+                            </select>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input input-enabled" type="checkbox" ${enabled ? 'checked' : ''}>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        });
+    });
+    tbody.innerHTML = rows.join('');
+}
+
+function applySettingsForm(settings) {
+    const getValue = key => settings[key]?.setting_value ?? '';
+    document.getElementById('setting-system-name').value = getValue('system_name');
+    document.getElementById('setting-polling-interval').value = getValue('polling_interval') || 300;
+    document.getElementById('setting-polling-enabled').value = getValue('polling_enabled') || '1';
+    document.getElementById('setting-notif-enabled').value = getValue('notifications_enabled') || '0';
+    document.getElementById('setting-telegram-token').value = getValue('telegram_bot_token');
+    document.getElementById('setting-telegram-chat').value = getValue('telegram_chat_id');
+}
+
+function openDeviceModal(id = null) {
+    const form = document.getElementById('device-form');
+    form.reset();
+    document.getElementById('device-id').value = '';
+    document.getElementById('deviceModalLabel').textContent = id ? 'Edit Perangkat OLT' : 'Tambah Perangkat OLT';
+    toggleSnmpFields();
+
+    if (id) {
+        fetch('/api/admin/olt_monitoring.php?action=device&id=' + id, { headers: buildHeaders() })
+            .then(handleJsonResponse)
+            .then(response => {
+                if (!response.success) throw new Error(response.message || 'Gagal memuat perangkat');
+                const device = response.data?.device;
+                if (!device) return;
+                document.getElementById('device-id').value = device.id;
+                document.getElementById('device-name').value = device.name ?? '';
+                document.getElementById('device-location').value = device.location ?? '';
+                document.getElementById('device-ip').value = device.ip_address ?? '';
+                document.getElementById('device-port').value = device.port ?? 22;
+                document.getElementById('device-total-ports').value = device.total_ports ?? 4;
+                document.getElementById('device-username').value = device.username ?? '';
+                document.getElementById('device-password').value = device.password ?? '';
+                document.getElementById('device-polling-method').value = device.polling_method ?? 'ssh';
+                document.getElementById('device-type').value = device.device_type ?? 'epon';
+                document.getElementById('device-snmp-community').value = device.snmp_community ?? 'public';
+                document.getElementById('device-snmp-version').value = device.snmp_version ?? 'v2c';
+                toggleSnmpFields();
+            })
+            .catch(error => showAlert(error.message, 'danger'));
+    }
+
+    deviceModal.show();
+}
+
+function deleteDevice(id) {
+    if (!confirm('Hapus perangkat ini? Data ONT terkait juga akan dihapus.')) return;
+    fetch('/api/admin/olt_monitoring.php?action=delete_device', {
+        method: 'POST',
+        headers: buildHeaders(),
+        body: JSON.stringify({ id })
+    })
+        .then(handleJsonResponse)
+        .then(response => {
+            if (!response.success) throw new Error(response.message || 'Gagal menghapus perangkat');
+            showAlert('Perangkat berhasil dihapus', 'success');
+            loadDevices();
+            loadOnts();
+        })
+        .catch(error => showAlert(error.message, 'danger'));
+}
+
+function toggleSnmpFields() {
+    const method = document.getElementById('device-polling-method').value;
+    document.querySelectorAll('.snmp-group').forEach(el => {
+        el.classList.toggle('d-none', method !== 'snmp');
+    });
+}
+
+function populateOltFilters(devices) {
+    const selectOlt = document.getElementById('filter-olt');
+    const selectEventOlt = document.getElementById('filter-event-olt');
+    const options = ['<option value="">Semua perangkat</option>'];
+    const eventOptions = ['<option value="">Semua OLT</option>'];
+    devices.forEach(device => {
+        options.push(`<option value="${device.id}">${escapeHtml(device.name)}</option>`);
+        eventOptions.push(`<option value="${device.id}">${escapeHtml(device.name)}</option>`);
+    });
+    selectOlt.innerHTML = options.join('');
+    selectEventOlt.innerHTML = eventOptions.join('');
+}
+
+function showAlert(message, type = 'info') {
+    const container = document.getElementById('alert-container');
+    const wrapper = document.createElement('div');
+    wrapper.className = `alert alert-${type} alert-dismissible fade show`;
+    wrapper.innerHTML = `
+        ${escapeHtml(message)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    container.appendChild(wrapper);
+    setTimeout(() => {
+        const alert = bootstrap.Alert.getOrCreateInstance(wrapper);
+        alert.close();
+    }, 6000);
+}
+
+function buildHeaders() {
+    return {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+    };
+}
+
+function handleJsonResponse(response) {
+    if (!response.ok) {
+        return response.json().catch(() => {
+            throw new Error('Permintaan gagal dengan status ' + response.status);
+        }).then(err => {
+            throw new Error(err.message || 'Terjadi kesalahan');
+        });
+    }
+    return response.json();
+}
+
+function debounce(fn, delay) {
+    let timer = null;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,85 +11,501 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom Styles -->
+    <link href="/assets/css/style.css" rel="stylesheet">
+    <link href="/assets/css/responsive.css" rel="stylesheet">
 
     <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #7c3aed;
+            --success-color: #059669;
+            --warning-color: #d97706;
+            --danger-color: #dc2626;
+            --info-color: #0284c7;
+            --dark-color: #1f2937;
+            --light-color: #f8fafc;
+            --sidebar-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+
         .sidebar {
             min-height: 100vh;
-            background: #343a40;
+            background: var(--sidebar-bg);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
         }
+
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat;
+            background-size: 20px 20px;
+            pointer-events: none;
+        }
+
+        .sidebar-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .sidebar .brand {
+            padding: 2rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .sidebar .brand h5 {
+            color: white;
+            font-weight: 600;
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
         .sidebar .nav-link {
-            color: rgba(255,255,255,.75);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 0.75rem 1.5rem;
+            margin: 0.25rem 1rem;
+            border-radius: 12px;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            font-weight: 500;
         }
+
         .sidebar .nav-link:hover {
-            color: #fff;
+            color: white;
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
         }
+
         .sidebar .nav-link.active {
-            color: #fff;
-            background: #0d6efd;
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }
+
+        .sidebar .nav-link i {
+            width: 20px;
+            margin-right: 12px;
+        }
+
         .main-content {
             margin-left: 0;
+            transition: var(--transition);
+            min-height: 100vh;
         }
-        @media (min-width: 768px) {
+
+        @media (min-width: 992px) {
             .main-content {
-                margin-left: 250px;
+                margin-left: 280px;
             }
         }
-        .stat-card {
-            transition: transform 0.2s;
+
+        .top-bar {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            box-shadow: var(--card-shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
         .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            border: none;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            border-radius: 16px 16px 0 0 !important;
+        }
+
+        .btn {
+            border-radius: 12px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+        }
+
+        .btn-primary:hover {
             transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .list-group-item {
+            border: none;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            transition: var(--transition);
+        }
+
+        .list-group-item:hover {
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        .sidebar-toggle {
+            display: none;
+        }
+
+        /* Enhanced Mobile Responsive Styles */
+        @media (max-width: 576px) {
+            .sidebar {
+                position: fixed;
+                left: -100%;
+                width: 100%;
+                z-index: 1050;
+                transition: var(--transition);
+                height: 100vh;
+                overflow-y: auto;
+            }
+
+            .sidebar.show {
+                left: 0;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 0.5rem;
+            }
+
+            .sidebar-toggle {
+                display: block;
+                background: none;
+                border: none;
+                color: var(--dark-color);
+                font-size: 1.5rem;
+                padding: 0.5rem;
+            }
+
+            .top-bar {
+                padding: 0.75rem 1rem;
+                flex-wrap: wrap;
+            }
+
+            .user-profile {
+                order: 2;
+                flex-basis: 100%;
+                justify-content: center;
+                margin-top: 0.5rem;
+            }
+
+            .welcome-section {
+                padding: 1.5rem 1rem;
+                text-align: center;
+            }
+
+            .welcome-section h2 {
+                font-size: 1.5rem;
+            }
+
+            .stats-container .row > div {
+                margin-bottom: 1rem;
+            }
+
+            .stat-card {
+                padding: 1rem;
+                text-align: center;
+            }
+
+            .stat-card h3 {
+                font-size: 1.75rem;
+            }
+
+            .chart-container {
+                height: 250px !important;
+            }
+
+            .table-responsive {
+                font-size: 0.875rem;
+            }
+
+            .modal-dialog {
+                margin: 0.5rem;
+            }
+        }
+
+        @media (min-width: 577px) and (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                width: 280px;
+                z-index: 1050;
+                transition: var(--transition);
+            }
+
+            .sidebar.show {
+                left: 0;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 1rem;
+            }
+
+            .sidebar-toggle {
+                display: block;
+                background: none;
+                border: none;
+                color: var(--dark-color);
+                font-size: 1.25rem;
+            }
+
+            .top-bar {
+                padding: 1rem;
+            }
+
+            .welcome-section {
+                padding: 1.5rem;
+            }
+
+            .stats-container .col-md-3 {
+                flex: 0 0 50%;
+                max-width: 50%;
+            }
+
+            .chart-container {
+                height: 300px !important;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 991px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                width: 280px;
+                z-index: 1050;
+                transition: var(--transition);
+            }
+
+            .sidebar.show {
+                left: 0;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .sidebar-toggle {
+                display: block;
+                background: none;
+                border: none;
+                color: var(--dark-color);
+                font-size: 1.25rem;
+            }
+
+            .stats-container .col-md-3 {
+                flex: 0 0 50%;
+                max-width: 50%;
+            }
+        }
+
+        @media (min-width: 992px) {
+            .sidebar-toggle {
+                display: none;
+            }
+        }
+
+        .theme-toggle {
+            background: rgba(0, 0, 0, 0.05);
+            border: none;
+            border-radius: 12px;
+            padding: 0.5rem;
+            color: var(--dark-color);
+            transition: var(--transition);
+        }
+
+        .theme-toggle:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .welcome-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .welcome-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: translate(50px, -50px);
+        }
+
+        .activity-item {
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            background: rgba(79, 70, 229, 0.05);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .metric-trend {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .metric-trend.up {
+            color: var(--success-color);
+        }
+
+        .metric-trend.down {
+            color: var(--danger-color);
         }
     </style>
 </head>
 <body>
     <!-- Sidebar -->
-    <nav class="sidebar position-fixed" style="width: 250px;">
-        <div class="p-3">
-            <h5 class="text-white mb-4">
-                <i class="fas fa-cogs me-2"></i>
-                SolusiPaymentManagement
-            </h5>
-            <ul class="nav flex-column">
+    <nav class="sidebar position-fixed" style="width: 280px;">
+        <div class="sidebar-content">
+            <div class="brand">
+                <h5>
+                    <i class="fas fa-building me-2"></i>
+                    SolusiPaymentManagement
+                </h5>
+            </div>
+            <ul class="nav flex-column py-3">
                 <li class="nav-item">
                     <a class="nav-link active" href="dashboard.php">
-                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        <i class="fas fa-tachometer-alt"></i>Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="customers.php">
-                        <i class="fas fa-users me-2"></i>Customers
+                        <i class="fas fa-users"></i>Customers
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="invoices.php">
-                        <i class="fas fa-file-invoice me-2"></i>Invoices
+                        <i class="fas fa-file-invoice"></i>Invoices
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="transactions.php">
-                        <i class="fas fa-credit-card me-2"></i>Transactions
+                        <i class="fas fa-credit-card"></i>Transactions
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="payment_gateways.php">
-                        <i class="fas fa-money-check me-2"></i>Payment Gateways
+                        <i class="fas fa-money-check"></i>Payment Gateways
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="customers_map.php">
-                        <i class="fas fa-map-marked-alt me-2"></i>Customer Map
+                        <i class="fas fa-map-marked-alt"></i>Customer Map
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="analytics.php">
+                        <i class="fas fa-chart-line"></i>Analytics
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="settings.php">
-                        <i class="fas fa-cog me-2"></i>Settings
+                        <i class="fas fa-cog"></i>Settings
                     </a>
                 </li>
-                <li class="nav-item mt-3">
-                    <a class="nav-link text-danger" href="#" onclick="logout()">
-                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                <li class="nav-item mt-auto">
+                    <a class="nav-link text-white-50" href="#" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i>Logout
                     </a>
                 </li>
             </ul>
@@ -98,65 +514,101 @@
 
     <!-- Main Content -->
     <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="d-flex justify-content-between align-items-center w-100">
+                <div class="d-flex align-items-center">
+                    <button class="sidebar-toggle me-3" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h4 class="mb-0 fw-semibold">Dashboard</h4>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <button class="theme-toggle" onclick="toggleTheme()">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <div class="user-profile">
+                        <div class="user-avatar">A</div>
+                        <div>
+                            <div class="fw-semibold">Administrator</div>
+                            <small class="text-muted">Super Admin</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="container-fluid p-4">
-            <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Dashboard</h2>
-                <div>
-                    <span class="text-muted">Welcome, Administrator</span>
+            <!-- Welcome Section -->
+            <div class="welcome-section">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-2">Selamat Datang, Administrator!</h2>
+                        <p class="mb-0 opacity-90">Kelola sistem pembayaran dan ISP dengan mudah melalui dashboard ini.</p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="text-white-50">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            <span id="current-date"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Stats Cards -->
             <div class="row mb-4" id="stats-cards">
-                <div class="col-md-3 mb-3">
-                    <div class="card stat-card bg-primary text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">Total Customers</h6>
-                                    <h3 id="total-customers">-</h3>
-                                </div>
-                                <i class="fas fa-users fa-2x opacity-75"></i>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Total Customers</h6>
+                            <h3 class="mb-1" id="total-customers">-</h3>
+                            <div class="metric-trend up">
+                                <i class="fas fa-arrow-up me-1"></i>+12% vs last month
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
-                    <div class="card stat-card bg-success text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">Active Customers</h6>
-                                    <h3 id="active-customers">-</h3>
-                                </div>
-                                <i class="fas fa-user-check fa-2x opacity-75"></i>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Active Customers</h6>
+                            <h3 class="mb-1" id="active-customers">-</h3>
+                            <div class="metric-trend up">
+                                <i class="fas fa-arrow-up me-1"></i>+8% vs last month
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
-                    <div class="card stat-card bg-warning text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">Pending Invoices</h6>
-                                    <h3 id="pending-invoices">-</h3>
-                                </div>
-                                <i class="fas fa-clock fa-2x opacity-75"></i>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Pending Invoices</h6>
+                            <h3 class="mb-1" id="pending-invoices">-</h3>
+                            <div class="metric-trend down">
+                                <i class="fas fa-arrow-down me-1"></i>-5% vs last month
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
-                    <div class="card stat-card bg-info text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">Revenue This Month</h6>
-                                    <h3 id="monthly-revenue">-</h3>
-                                </div>
-                                <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Revenue This Month</h6>
+                            <h3 class="mb-1" id="monthly-revenue">-</h3>
+                            <div class="metric-trend up">
+                                <i class="fas fa-arrow-up me-1"></i>+23% vs last month
                             </div>
                         </div>
                     </div>
@@ -189,35 +641,41 @@
 
             <!-- Recent Activity -->
             <div class="row">
-                <div class="col-md-6">
-                    <div class="card">
+                <div class="col-lg-8 mb-4">
+                    <div class="card h-100">
                         <div class="card-header">
-                            <h5>Recent Payments</h5>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Recent Payments</h5>
+                                <span class="badge bg-primary rounded-pill">Live</span>
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div id="recent-payments" class="list-group list-group-flush">
-                                <div class="text-center text-muted">
+                            <div id="recent-payments">
+                                <div class="text-center text-muted py-4">
                                     <div class="spinner-border spinner-border-sm" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
-                                    Loading...
+                                    <div class="mt-2">Loading payments...</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card">
+                <div class="col-lg-4 mb-4">
+                    <div class="card h-100">
                         <div class="card-header">
-                            <h5>Recent Activity</h5>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">System Activity</h5>
+                                <i class="fas fa-clock text-muted"></i>
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div id="recent-activity" class="list-group list-group-flush">
-                                <div class="text-center text-muted">
+                            <div id="recent-activity">
+                                <div class="text-center text-muted py-4">
                                     <div class="spinner-border spinner-border-sm" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
-                                    Loading...
+                                    <div class="mt-2">Loading activity...</div>
                                 </div>
                             </div>
                         </div>
@@ -243,12 +701,46 @@
             }
         });
 
-        // Load dashboard data
+        // Initialize dashboard
         $(document).ready(function() {
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
             loadStats();
             loadCharts();
             loadRecentData();
+            
+            // Add smooth animations
+            $('.stat-card').each(function(index) {
+                $(this).css('animation-delay', (index * 100) + 'ms');
+                $(this).addClass('animate-fade-in');
+            });
         });
+
+        function updateDateTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            $('#current-date').text(now.toLocaleDateString('id-ID', options));
+        }
+
+        function toggleSidebar() {
+            $('.sidebar').toggleClass('show');
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-bs-theme', newTheme);
+            
+            const icon = $('.theme-toggle i');
+            icon.removeClass('fa-moon fa-sun');
+            icon.addClass(newTheme === 'dark' ? 'fa-sun' : 'fa-moon');
+        }
 
         function loadStats() {
             $.get('/api/admin/dashboard/stats')
@@ -315,18 +807,25 @@
                         let html = '';
                         response.data.forEach(function(payment) {
                             html += `
-                                <div class="list-group-item">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h6 class="mb-1">${payment.customer_name}</h6>
-                                        <small>${formatCurrency(payment.amount)}</small>
+                                <div class="activity-item">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-semibold mb-1">${payment.customer_name}</div>
+                                            <div class="text-muted small">${payment.invoice_number}</div>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="fw-bold text-success">${formatCurrency(payment.amount)}</div>
+                                            <div class="text-muted small">${formatDateTime(payment.paid_at)}</div>
+                                        </div>
                                     </div>
-                                    <p class="mb-1">${payment.invoice_number}</p>
-                                    <small class="text-muted">${formatDateTime(payment.paid_at)}</small>
                                 </div>
                             `;
                         });
                         $('#recent-payments').html(html);
                     }
+                })
+                .fail(function() {
+                    $('#recent-payments').html('<div class="text-center text-muted py-4">Gagal memuat data pembayaran</div>');
                 });
 
             // Recent activity
@@ -336,17 +835,28 @@
                         let html = '';
                         response.data.forEach(function(activity) {
                             html += `
-                                <div class="list-group-item">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h6 class="mb-1">${activity.action}</h6>
-                                        <small class="text-muted">${formatDateTime(activity.created_at)}</small>
+                                <div class="activity-item mb-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="bg-primary rounded-circle p-2 me-3">
+                                            <i class="fas fa-bolt text-white"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-semibold">${activity.action}</div>
+                                            <div class="text-muted small">by ${activity.user_name || 'System'}</div>
+                                        </div>
                                     </div>
-                                    <p class="mb-1">${activity.user_name || 'System'}</p>
+                                    <div class="text-muted small">
+                                        <i class="fas fa-clock me-1"></i>
+                                        ${formatDateTime(activity.created_at)}
+                                    </div>
                                 </div>
                             `;
                         });
                         $('#recent-activity').html(html);
                     }
+                })
+                .fail(function() {
+                    $('#recent-activity').html('<div class="text-center text-muted py-4">Gagal memuat aktivitas sistem</div>');
                 });
         }
 
@@ -362,13 +872,199 @@
         }
 
         function logout() {
-            if (confirm('Are you sure you want to logout?')) {
+            if (confirm('Apakah Anda yakin ingin keluar dari sistem?')) {
+                // Show loading
+                const logoutBtn = $('a[onclick="logout()"]');
+                const originalText = logoutBtn.html();
+                logoutBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>Logging out...');
+                
                 $.post('/api/public/logout')
                     .done(function() {
                         window.location.href = '/';
+                    })
+                    .fail(function() {
+                        logoutBtn.html(originalText);
+                        alert('Gagal logout. Silakan coba lagi.');
                     });
             }
         }
+
+        // Mobile Sidebar Toggle Functionality
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            
+            if (sidebar.classList.contains('show')) {
+                sidebar.classList.remove('show');
+                if (overlay) overlay.remove();
+                document.body.style.overflow = '';
+            } else {
+                sidebar.classList.add('show');
+                
+                // Create overlay for mobile
+                if (window.innerWidth <= 991) {
+                    const overlayDiv = document.createElement('div');
+                    overlayDiv.className = 'sidebar-overlay';
+                    overlayDiv.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0, 0, 0, 0.5);
+                        z-index: 1040;
+                        display: block;
+                    `;
+                    overlayDiv.onclick = toggleSidebar;
+                    document.body.appendChild(overlayDiv);
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+        }
+
+        // Handle window resize
+        function handleResize() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            
+            if (window.innerWidth > 991) {
+                sidebar.classList.remove('show');
+                if (overlay) overlay.remove();
+                document.body.style.overflow = '';
+            }
+        }
+
+        // Add event listeners
+        $(document).ready(function() {
+            // Sidebar toggle button
+            $('.sidebar-toggle').on('click', toggleSidebar);
+            
+            // Window resize handler
+            $(window).on('resize', handleResize);
+            
+            // Close sidebar when clicking on sidebar links in mobile
+            $('.sidebar .nav-link').on('click', function() {
+                if (window.innerWidth <= 991) {
+                    setTimeout(toggleSidebar, 100);
+                }
+            });
+
+            // Touch/swipe gestures for mobile
+            let startX = 0;
+            let startY = 0;
+            
+            document.addEventListener('touchstart', function(e) {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            });
+            
+            document.addEventListener('touchmove', function(e) {
+                if (!startX || !startY) return;
+                
+                const diffX = e.touches[0].clientX - startX;
+                const diffY = e.touches[0].clientY - startY;
+                
+                if (Math.abs(diffX) > Math.abs(diffY) && window.innerWidth <= 991) {
+                    const sidebar = document.querySelector('.sidebar');
+                    
+                    if (diffX > 50 && startX < 20 && !sidebar.classList.contains('show')) {
+                        // Swipe right from left edge to open
+                        toggleSidebar();
+                    } else if (diffX < -50 && sidebar.classList.contains('show')) {
+                        // Swipe left to close
+                        toggleSidebar();
+                    }
+                }
+                
+                startX = 0;
+                startY = 0;
+            });
+        });
+
+        // Add CSS animations and responsive utilities
+        $('<style>').text(`
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .animate-fade-in {
+                animation: fadeIn 0.6s ease-out forwards;
+            }
+            
+            /* Responsive table improvements */
+            @media (max-width: 576px) {
+                .table-responsive table,
+                .table-responsive thead,
+                .table-responsive tbody,
+                .table-responsive th,
+                .table-responsive td,
+                .table-responsive tr {
+                    display: block;
+                }
+                
+                .table-responsive thead tr {
+                    position: absolute;
+                    top: -9999px;
+                    left: -9999px;
+                }
+                
+                .table-responsive tr {
+                    border: 1px solid #ccc;
+                    margin-bottom: 10px;
+                    padding: 10px;
+                    border-radius: 8px;
+                    background: white;
+                }
+                
+                .table-responsive td {
+                    border: none;
+                    position: relative;
+                    padding-left: 50% !important;
+                    text-align: right;
+                }
+                
+                .table-responsive td:before {
+                    content: attr(data-label);
+                    position: absolute;
+                    left: 6px;
+                    width: 45%;
+                    text-align: left;
+                    font-weight: bold;
+                }
+            }
+            
+            /* Improved form layouts for mobile */
+            @media (max-width: 576px) {
+                .form-row {
+                    flex-direction: column;
+                }
+                
+                .form-group {
+                    margin-bottom: 1rem;
+                }
+                
+                .btn-group {
+                    flex-direction: column;
+                }
+                
+                .btn-group .btn {
+                    margin-bottom: 0.5rem;
+                }
+            }
+        `).appendTo('head');
+
+        // Real-time updates simulation
+        setInterval(function() {
+            // Simulate real-time data updates
+            const elements = ['#total-customers', '#active-customers', '#pending-invoices'];
+            elements.forEach(function(el) {
+                const current = parseInt($(el).text()) || 0;
+                const change = Math.random() > 0.7 ? (Math.random() > 0.5 ? 1 : -1) : 0;
+                if (current > 0 && change !== 0) {
+                    $(el).text(current + change);
+                }
+            });
+        }, 30000); // Update every 30 seconds
     </script>
 </body>
 </html>

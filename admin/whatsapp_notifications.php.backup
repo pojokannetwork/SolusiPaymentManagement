@@ -1,0 +1,674 @@
+<?php
+// WhatsApp Notifications Center
+
+require_once __DIR__ . '/../includes/bootstrap.php';
+
+$guard = RouterGuard::getInstance();
+$guard->requirePermission('admin.customers');
+
+$user = getCurrentUser();
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Notifications - <?= htmlspecialchars(APP_DISPLAY_NAME ?? APP_NAME); ?></title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f8fafc; }
+        .summary-card { border: none; border-radius: 18px; box-shadow: 0 15px 45px rgba(15, 23, 42, 0.08); }
+        .summary-card .icon { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; }
+        .template-card { border: none; border-radius: 16px; box-shadow: 0 12px 35px rgba(15, 23, 42, 0.06); }
+        .placeholder-tag { display: inline-flex; align-items: center; gap: .4rem; border-radius: 999px; background: rgba(59,130,246,.12); color: #2563eb; padding: .35rem .65rem; font-size: .75rem; margin: .15rem; }
+        .placeholder-tag span { font-weight: 600; }
+        .qr-preview { width: 220px; height: 220px; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1px rgba(148, 163, 184, .15); display: grid; place-items: center; overflow: hidden; }
+        .qr-preview img { width: 100%; height: 100%; object-fit: contain; }
+        .message-box { min-height: 220px; border-radius: 16px; background: #fff; padding: 1.25rem; border: 1px solid rgba(148,163,184,.2); box-shadow: inset 0 0 0 1px rgba(148, 163, 184, .12); }
+        .message-box pre { white-space: pre-wrap; word-break: break-word; font-family: 'Inter', 'Segoe UI', sans-serif; }
+        .badge-placeholder { font-family: 'JetBrains Mono', monospace; font-size: .75rem; }
+        .main-content { margin-left: 0; }
+        @media (min-width: 992px) { .main-content { margin-left: 260px; } }
+    </style>
+</head>
+<body>
+<?php include __DIR__ . '/../includes/admin_sidebar.php'; ?>
+
+<div class="main-content">
+    <div class="d-lg-none p-2 border-bottom bg-white position-sticky top-0" style="z-index: 1030;">
+        <button class="btn btn-outline-secondary" onclick="toggleSidebar(true)"><i class="fas fa-bars"></i></button>
+    </div>
+    <div class="container-fluid py-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+            <div>
+                <h2 class="fw-bold mb-1">WhatsApp Notifications</h2>
+                <span class="text-muted">Kelola template pesan dan kirim notifikasi via WhatsApp menggunakan QR (tanpa API pihak ketiga)</span>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-outline-primary" id="btn-refresh">
+                    <i class="fas fa-rotate me-2"></i>Muat Ulang
+                </button>
+            </div>
+        </div>
+
+        <div id="alert-container"></div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card summary-card p-3">
+                    <div class="card-body d-flex gap-3 align-items-center">
+                        <div class="icon bg-success bg-opacity-10 text-success">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted text-uppercase small fw-semibold">Notifikasi Registrasi</div>
+                            <div class="fw-bold">Template pelanggan baru</div>
+                            <p class="text-muted small mb-0">Pesan otomatis ketika pelanggan berhasil terdaftar.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card summary-card p-3">
+                    <div class="card-body d-flex gap-3 align-items-center">
+                        <div class="icon bg-warning bg-opacity-10 text-warning">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted text-uppercase small fw-semibold">Pengingat Jatuh Tempo</div>
+                            <div class="fw-bold">Tagihan mendekati jatuh tempo</div>
+                            <p class="text-muted small mb-0">Informasikan pelanggan terkait kewajiban pembayaran.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card summary-card p-3">
+                    <div class="card-body d-flex gap-3 align-items-center">
+                        <div class="icon bg-info bg-opacity-10 text-info">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted text-uppercase small fw-semibold">Pemberitahuan Umum</div>
+                            <div class="fw-bold">Pesan broadcast manual</div>
+                            <p class="text-muted small mb-0">Sampaikan informasi penting dengan pesan kustom.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card template-card mb-4">
+            <div class="card-body">
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-end mb-4">
+                    <div>
+                        <h5 class="fw-semibold mb-1">Template Pesan</h5>
+                        <p class="text-muted mb-0">Sesuaikan isi pesan sesuai kebutuhan. Gunakan placeholder untuk menggantikan data otomatis.</p>
+                    </div>
+                    <button class="btn btn-primary" id="btn-save-templates">
+                        <i class="fas fa-save me-2"></i>Simpan Template
+                    </button>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-lg-6">
+                        <label class="form-label fw-semibold">Registrasi Pelanggan</label>
+                        <textarea class="form-control" id="template-registration" rows="7"></textarea>
+                    </div>
+                    <div class="col-lg-6">
+                        <label class="form-label fw-semibold">Pengingat Jatuh Tempo</label>
+                        <textarea class="form-control" id="template-due" rows="7"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Pemberitahuan Umum</label>
+                        <textarea class="form-control" id="template-general" rows="5"></textarea>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <h6 class="fw-semibold mb-2">Placeholder yang tersedia</h6>
+                <div class="mb-2 text-muted small">Klik untuk menyalin placeholder ke clipboard.</div>
+                <div id="placeholders-container" class="d-flex flex-wrap"></div>
+            </div>
+        </div>
+
+        <div class="card template-card">
+            <div class="card-body">
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-end mb-4">
+                    <div>
+                        <h5 class="fw-semibold mb-1">Kirim &amp; Preview Pesan</h5>
+                        <p class="text-muted mb-0">Pilih pelanggan atau invoice untuk menghasilkan link WhatsApp beserta QR code.</p>
+                    </div>
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="preview-type" id="preview-registration" autocomplete="off" value="registration" checked>
+                        <label class="btn btn-outline-primary" for="preview-registration"><i class="fas fa-user-check me-2"></i>Registrasi</label>
+
+                        <input type="radio" class="btn-check" name="preview-type" id="preview-due" autocomplete="off" value="due">
+                        <label class="btn btn-outline-primary" for="preview-due"><i class="fas fa-bell me-2"></i>Jatuh Tempo</label>
+
+                        <input type="radio" class="btn-check" name="preview-type" id="preview-general" autocomplete="off" value="general">
+                        <label class="btn btn-outline-primary" for="preview-general"><i class="fas fa-comments me-2"></i>Umum</label>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Pelanggan</label>
+                            <select class="form-select" id="select-customer"></select>
+                        </div>
+                        <div class="mb-3" id="invoice-wrapper" style="display:none;">
+                            <label class="form-label fw-semibold">Invoice</label>
+                            <select class="form-select" id="select-invoice"></select>
+                        </div>
+                        <div class="mb-3" id="custom-message-wrapper" style="display:none;">
+                            <label class="form-label fw-semibold">Pesan Kustom</label>
+                            <textarea class="form-control" id="custom-message" rows="4" placeholder="Tulis pemberitahuan umum untuk pelanggan ini"></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success" id="btn-generate">
+                                <i class="fas fa-bolt me-2"></i>Generate Preview
+                            </button>
+                            <button class="btn btn-outline-success" id="btn-queue">
+                                <i class="fas fa-paper-plane me-2"></i>Kirim via Antrean
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="message-box h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <div class="text-muted small">Nomor WhatsApp</div>
+                                    <div class="fw-semibold" id="preview-phone">-</div>
+                                </div>
+                                <div>
+                                    <button class="btn btn-outline-secondary btn-sm" id="btn-copy-message">
+                                        <i class="fas fa-copy me-1"></i>Copy Pesan
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="text-muted small">Link WhatsApp</div>
+                                <div class="input-group">
+                                    <input type="text" class="form-control form-control-sm" id="preview-link" readonly>
+                                    <button class="btn btn-outline-secondary btn-sm" id="btn-open-link" disabled>
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-muted small mb-1">Isi Pesan</div>
+                                <pre id="preview-message" class="mb-0 text-dark">Silakan pilih pelanggan dan generate preview.</pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 d-flex flex-column align-items-center">
+                        <div class="qr-preview mb-3">
+                            <img src="" alt="QR WhatsApp" id="preview-qr" style="display:none;">
+                            <span class="text-muted small" id="qr-placeholder">QR akan muncul di sini</span>
+                        </div>
+                        <button class="btn btn-outline-secondary" id="btn-download-qr" disabled>
+                            <i class="fas fa-download me-2"></i>Unduh QR
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="card template-card mt-4 mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center mb-3">
+            <div>
+                <h5 class="fw-semibold mb-1">Status Worker &amp; Antrean</h5>
+                <p class="text-muted mb-0">Pantau sesi WhatsApp yang login serta daftar pesan yang menunggu dikirim.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary btn-sm" id="btn-refresh-queue">
+                    <i class="fas fa-sync-alt me-2"></i>Refresh Status
+                </button>
+            </div>
+        </div>
+        <div class="row g-3">
+            <div class="col-lg-4">
+                <div class="border rounded-3 p-3 bg-light">
+                    <h6 class="fw-semibold">Ringkasan Antrean</h6>
+                    <ul class="list-unstyled mb-0 small" id="queue-summary-list">
+                        <li>Pending: <strong id="queue-summary-pending">0</strong></li>
+                        <li>Processing: <strong id="queue-summary-processing">0</strong></li>
+                        <li>Terkirim: <strong id="queue-summary-sent">0</strong></li>
+                        <li>Gagal: <strong id="queue-summary-failed">0</strong></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="border rounded-3 p-3 bg-white" style="min-height: 220px;">
+                    <h6 class="fw-semibold">Sesi WhatsApp</h6>
+                    <div id="session-status-container" class="small text-muted"></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="border rounded-3 p-3 bg-white" style="min-height: 220px;">
+                    <h6 class="fw-semibold">QR Login (Jika diperlukan)</h6>
+                    <div class="border rounded-4 p-2 bg-light" style="width: 200px; height: 200px; display: grid; place-items: center; margin: 0 auto;">
+                        <img src="" alt="WhatsApp QR" id="session-qr" style="max-width: 100%; display:none;">
+                        <span class="text-muted small text-center" id="session-qr-placeholder">QR login akan tampil di sini saat sesi membutuhkan autentikasi.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <hr class="my-4">
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <h6 class="fw-semibold">Pending</h6>
+                <div id="pending-queue-container" class="small text-muted">Tidak ada data.</div>
+            </div>
+            <div class="col-lg-6">
+                <h6 class="fw-semibold">Gagal</h6>
+                <div id="failed-queue-container" class="small text-muted">Tidak ada data.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const csrfToken = '<?= getCsrfToken(); ?>';
+$.ajaxSetup({ headers: { 'X-CSRF-Token': csrfToken } });
+
+let templates = {};
+let customers = [];
+let invoices = [];
+let queueSummaryTimer = null;
+
+$(document).ready(function(){
+    loadTemplates();
+    loadCustomers();
+    loadInvoices();
+    loadQueueSummary();
+    bindEvents();
+    queueSummaryTimer = setInterval(loadQueueSummary, 30000);
+});
+
+function bindEvents() {
+    $('#btn-refresh').on('click', function(){
+        loadTemplates();
+        loadCustomers();
+        loadInvoices();
+        loadQueueSummary();
+        showAlert('Data diperbarui.', 'info');
+    });
+
+    $('#btn-save-templates').on('click', saveTemplates);
+
+    $('[name="preview-type"]').on('change', handlePreviewTypeChange);
+
+    $('#btn-generate').on('click', generatePreview);
+    $('#btn-queue').on('click', enqueueMessage);
+
+    $('#btn-copy-message').on('click', copyMessage);
+    $('#btn-open-link').on('click', openLink);
+    $('#btn-download-qr').on('click', downloadQr);
+    $('#btn-refresh-queue').on('click', loadQueueSummary);
+
+    $(window).on('unload', function(){
+        if (queueSummaryTimer) {
+            clearInterval(queueSummaryTimer);
+        }
+    });
+}
+
+function loadTemplates() {
+    $.get('/api/admin/whatsapp_notifications.php', { action: 'templates' })
+        .done(function(response){
+            if (!response.success) throw new Error(response.message || 'Gagal memuat template');
+            templates = response.data.templates || {};
+            $('#template-registration').val(templates.registration || '');
+            $('#template-due').val(templates.due || '');
+            $('#template-general').val(templates.general || '');
+            renderPlaceholders(response.data.placeholders || {});
+        })
+        .fail(handleAjaxError);
+}
+
+function renderPlaceholders(placeholders) {
+    const container = $('#placeholders-container').empty();
+    Object.keys(placeholders).forEach(group => {
+        const groupTitle = $('<div class="w-100 fw-semibold mt-2"></div>').text(group.toUpperCase());
+        container.append(groupTitle);
+        const entries = placeholders[group];
+        for (const key in entries) {
+            const tag = $('<button type="button" class="placeholder-tag btn btn-sm btn-light"></button>');
+            tag.attr('data-placeholder', key);
+            tag.text(key + ' ');
+            tag.append($('<span class="text-muted"></span>').text(entries[key]));
+            tag.on('click', () => copyToClipboard(key));
+            container.append(tag);
+        }
+    });
+}
+
+function saveTemplates() {
+    const payload = {
+        templates: {
+            registration: $('#template-registration').val(),
+            due: $('#template-due').val(),
+            general: $('#template-general').val(),
+        }
+    };
+
+    $.ajax({
+        url: '/api/admin/whatsapp_notifications.php?action=save_templates',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload)
+    })
+    .done(function(response){
+        if (!response.success) throw new Error(response.message || 'Gagal menyimpan template');
+        showAlert('Template berhasil disimpan.', 'success');
+        loadTemplates();
+    })
+    .fail(handleAjaxError);
+}
+
+function loadCustomers() {
+    $.get('/api/admin/customers.php', { action: 'list', limit: 500 })
+        .done(function(response){
+            if (!response.success) return;
+            customers = response.data.customers || [];
+            const select = $('#select-customer').empty();
+            select.append('<option value="">Pilih pelanggan...</option>');
+            customers.forEach(function(customer){
+                const label = customer.nama + ' • ' + (customer.kode_pelanggan || '-');
+                select.append(`<option value="${customer.id}">${label}</option>`);
+            });
+        })
+        .fail(handleAjaxError);
+}
+
+function loadInvoices() {
+    $.get('/api/admin/whatsapp_notifications.php', { action: 'invoices' })
+        .done(function(response){
+            if (!response.success) return;
+            invoices = response.data.invoices || [];
+            const select = $('#select-invoice').empty();
+            select.append('<option value="">Pilih invoice...</option>');
+            invoices.forEach(function(invoice){
+                const label = `${invoice.nomor} • ${invoice.customer_name} • ${invoice.total_formatted}`;
+                select.append(`<option value="${invoice.id}">${label}</option>`);
+            });
+        })
+        .fail(handleAjaxError);
+}
+
+function handlePreviewTypeChange() {
+    const type = $('[name="preview-type"]:checked').val();
+    $('#invoice-wrapper').toggle(type === 'due');
+    $('#custom-message-wrapper').toggle(type === 'general');
+}
+
+function generatePreview() {
+    const type = $('[name="preview-type"]:checked').val();
+    const customerId = parseInt($('#select-customer').val(), 10) || 0;
+    const invoiceId = parseInt($('#select-invoice').val(), 10) || 0;
+    const customMessage = $('#custom-message').val();
+
+    const payload = { type, customer_id: customerId, invoice_id: invoiceId, custom_message: customMessage };
+
+    $.ajax({
+        url: '/api/admin/whatsapp_notifications.php?action=preview',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload)
+    })
+    .done(function(response){
+        if (!response.success) throw new Error(response.message || 'Gagal membuat preview');
+        renderPreview(response.data);
+    })
+    .fail(handleAjaxError);
+}
+
+function renderPreview(data) {
+    $('#preview-phone').text(data.phone || '-');
+    $('#preview-link').val(data.link || '');
+    $('#preview-message').text(data.message || '-');
+
+    if (data.link) {
+        $('#btn-open-link').prop('disabled', false);
+    } else {
+        $('#btn-open-link').prop('disabled', true);
+    }
+
+    if (data.qr) {
+        $('#preview-qr').attr('src', data.qr).show();
+        $('#qr-placeholder').hide();
+        $('#btn-download-qr').prop('disabled', false).data('qr', data.qr);
+    } else {
+        $('#preview-qr').hide();
+        $('#qr-placeholder').show();
+        $('#btn-download-qr').prop('disabled', true).removeData('qr');
+    }
+}
+
+function copyMessage() {
+    const message = $('#preview-message').text().trim();
+    if (!message) {
+        showAlert('Tidak ada pesan untuk disalin.', 'warning');
+        return;
+    }
+    copyToClipboard(message);
+}
+
+function openLink() {
+    const link = $('#preview-link').val();
+    if (link) {
+        window.open(link, '_blank');
+    }
+}
+
+function downloadQr() {
+    const dataUrl = $('#btn-download-qr').data('qr');
+    if (!dataUrl) return;
+
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = 'whatsapp-qr.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function(){
+        showAlert('Disalin: ' + text, 'info', 2000);
+    }).catch(function(){
+        showAlert('Gagal menyalin ke clipboard.', 'danger');
+    });
+}
+
+function showAlert(message, type = 'info', timeout = 4000) {
+    const id = 'alert-' + Date.now();
+    const alert = $(`
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert" id="${id}">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `);
+    $('#alert-container').append(alert);
+    if (timeout > 0) {
+        setTimeout(() => {
+            alert.alert('close');
+        }, timeout);
+    }
+}
+
+function handleAjaxError(xhr) {
+    const response = xhr.responseJSON || {};
+    const message = response.message || 'Terjadi kesalahan pada server.';
+    showAlert(message, 'danger', 6000);
+}
+
+function enqueueMessage() {
+    const type = $('[name="preview-type"]:checked').val();
+    const customerId = parseInt($('#select-customer').val(), 10) || 0;
+    const invoiceId = parseInt($('#select-invoice').val(), 10) || 0;
+    const customMessage = $('#custom-message').val().trim();
+    const scheduleAt = null;
+
+    let action = '';
+    const payload = { schedule_at: scheduleAt };
+
+    if (type === 'registration') {
+        if (!customerId) {
+            showAlert('Pilih pelanggan terlebih dahulu.', 'warning');
+            return;
+        }
+        action = 'queue_registration';
+        payload.customer_id = customerId;
+    } else if (type === 'due') {
+        if (!invoiceId) {
+            showAlert('Pilih invoice terlebih dahulu.', 'warning');
+            return;
+        }
+        action = 'queue_due';
+        payload.invoice_id = invoiceId;
+    } else if (type === 'general') {
+        if (!customerId) {
+            showAlert('Pilih pelanggan terlebih dahulu.', 'warning');
+            return;
+        }
+        if (!customMessage) {
+            showAlert('Isi pesan kustom sebelum mengirim.', 'warning');
+            return;
+        }
+        action = 'queue_general';
+        payload.customer_id = customerId;
+        payload.custom_message = customMessage;
+    } else {
+        showAlert('Jenis pesan tidak dikenali.', 'danger');
+        return;
+    }
+
+    $('#btn-queue').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Memproses...');
+
+    $.ajax({
+        url: '/api/admin/whatsapp_notifications.php?action=' + action,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload)
+    })
+    .done(function(response){
+        if (!response.success) throw new Error(response.message || 'Gagal menambahkan ke antrean');
+        showAlert('Pesan dimasukkan ke antrean WhatsApp.', 'success');
+        loadQueueSummary();
+    })
+    .fail(handleAjaxError)
+    .always(function(){
+        $('#btn-queue').prop('disabled', false).html('<i class="fas fa-paper-plane me-2"></i>Kirim via Antrean');
+    });
+}
+
+function loadQueueSummary() {
+    $.get('/api/admin/whatsapp_notifications.php', { action: 'queue_summary' })
+        .done(function(response){
+            if (!response.success) return;
+            renderQueueSummary(response.data || {});
+        })
+        .fail(handleAjaxError);
+}
+
+function renderQueueSummary(data) {
+    const summary = data.summary || {};
+    $('#queue-summary-pending').text(summary.pending ?? 0);
+    $('#queue-summary-processing').text(summary.processing ?? 0);
+    $('#queue-summary-sent').text(summary.sent ?? 0);
+    $('#queue-summary-failed').text(summary.failed ?? 0);
+
+    renderSessions(data.sessions || []);
+    renderQueueList('#pending-queue-container', data.pending || []);
+    renderQueueList('#failed-queue-container', data.failed || []);
+}
+
+function renderSessions(sessions) {
+    const container = $('#session-status-container').empty();
+    const qrImg = $('#session-qr');
+    const qrPlaceholder = $('#session-qr-placeholder');
+
+    if (!sessions.length) {
+        container.text('Belum ada sesi yang tercatat.');
+        qrImg.hide();
+        qrPlaceholder.show().text('QR login akan tampil di sini saat sesi membutuhkan autentikasi.');
+        return;
+    }
+
+    sessions.forEach(function(session){
+        const card = $('<div class="mb-2"></div>');
+        const statusBadge = getStatusBadge(session.status || 'disconnected');
+        const info = session.info || {};
+        card.append(`<div><strong>${session.session_name}</strong> ${statusBadge}</div>`);
+        if (info.pushname) {
+            card.append(`<div>Nama WA: ${info.pushname}</div>`);
+        }
+        if (info.phone) {
+            card.append(`<div>Nomor: ${info.phone}</div>`);
+        }
+        if (session.last_seen) {
+            card.append(`<div class="text-muted">Aktif: ${session.last_seen}</div>`);
+        }
+        if (session.error_message) {
+            card.append(`<div class="text-danger small">${session.error_message}</div>`);
+        }
+        container.append(card);
+
+        if (session.status === 'qr' && session.qr_base64) {
+            qrImg.attr('src', session.qr_base64).show();
+            qrPlaceholder.hide();
+        }
+    });
+
+    if (!sessions.some(s => s.status === 'qr' && s.qr_base64)) {
+        qrImg.hide();
+        qrPlaceholder.show().text('Tidak ada QR login yang aktif saat ini.');
+    }
+}
+
+function renderQueueList(containerSelector, items) {
+    const container = $(containerSelector).empty();
+    if (!items.length) {
+        container.text('Tidak ada data.');
+        return;
+    }
+
+    items.forEach(function(item){
+        const wrapper = $('<div class="border-bottom py-2"></div>');
+        const name = item.customer_name ? `${item.customer_name}` : '(Tanpa nama)';
+        wrapper.append(`<div><strong>${name}</strong> <span class="text-muted small">(${item.phone})</span></div>`);
+        wrapper.append(`<div class="small text-muted">${item.message_type} • Jadwal: ${item.scheduled_at}</div>`);
+        wrapper.append(`<div class="small">${item.message}</div>`);
+        if (item.status === 'failed' && item.last_error) {
+            wrapper.append(`<div class="small text-danger">Error: ${item.last_error}</div>`);
+        }
+        container.append(wrapper);
+    });
+}
+
+function getStatusBadge(status) {
+    const classes = {
+        ready: 'bg-success',
+        connecting: 'bg-warning text-dark',
+        qr: 'bg-info text-dark',
+        error: 'bg-danger',
+        disconnected: 'bg-secondary'
+    };
+    const label = status.charAt(0).toUpperCase() + status.slice(1);
+    const badgeClass = classes[status] || 'bg-secondary';
+    return `<span class="badge ${badgeClass}">${label}</span>`;
+}
+</script>
+</body>
+</html>

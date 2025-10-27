@@ -38,8 +38,8 @@ class ActivityLogger {
 
         try {
             $this->db->insert(
-                "INSERT INTO activity_logs (user_id, aksi, endpoint, ip, user_agent, payload_singkat, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+                "INSERT INTO activity_logs (user_id, aksi, endpoint, ip, user_agent, payload_singkat)
+                 VALUES (?, ?, ?, ?, ?, ?)",
                 [$userId, $action, $endpoint, $ip, $userAgent, $payload]
             );
         } catch (Exception $e) {

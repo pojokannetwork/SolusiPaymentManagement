@@ -1,0 +1,249 @@
+/* Logo System Styles */
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.logo-container:hover {
+    transform: scale(1.05);
+}
+
+.logo-image {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    transition: all 0.3s ease;
+}
+
+.logo-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.logo-icon:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(5deg);
+}
+
+.logo-text {
+    flex: 1;
+}
+
+.logo-text h5 {
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.logo-text small {
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Responsive Logo Styles */
+@media (max-width: 1200px) {
+    .logo-container {
+        padding: 0.75rem 1rem;
+    }
+    
+    .logo-text h5 {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .logo-container {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .logo-text h5 {
+        font-size: 0.9rem;
+    }
+    
+    .logo-text small {
+        font-size: 0.65rem;
+    }
+    
+    .logo-icon {
+        width: 35px;
+        height: 35px;
+    }
+}
+
+@media (max-width: 576px) {
+    .logo-container {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .logo-text h5 {
+        font-size: 0.8rem;
+    }
+    
+    .logo-icon {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .logo-icon i {
+        font-size: 1rem;
+    }
+}
+
+/* Theme-specific logo styles */
+[data-bs-theme="dark"] .logo-text h5 {
+    color: white;
+}
+
+[data-bs-theme="dark"] .logo-text small {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+[data-bs-theme="light"] .logo-text h5 {
+    color: #1f2937;
+}
+
+[data-bs-theme="light"] .logo-text small {
+    color: #6b7280;
+}
+
+/* Animation for logo changes */
+.logo-container.changing {
+    animation: logoChange 0.6s ease-in-out;
+}
+
+@keyframes logoChange {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* Logo upload area styles */
+.logo-upload-area {
+    border: 2px dashed #e5e7eb;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    background: #f9fafb;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.logo-upload-area:hover {
+    border-color: #4f46e5;
+    background: #f0f0ff;
+}
+
+.logo-upload-area.dragover {
+    border-color: #4f46e5;
+    background: #e0e7ff;
+    transform: scale(1.02);
+}
+
+.logo-preview {
+    max-width: 200px;
+    max-height: 100px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.logo-management-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.logo-slot {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    background: #f9fafb;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.logo-slot:hover {
+    border-color: #4f46e5;
+    background: #f0f0ff;
+}
+
+.logo-slot.has-logo {
+    border-color: #10b981;
+    background: #ecfdf5;
+}
+
+.logo-slot img {
+    max-width: 150px;
+    max-height: 75px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.logo-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.logo-actions .btn {
+    border-radius: 8px;
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+
+/* Compact logo for mobile header */
+.mobile-logo {
+    max-height: 32px;
+    width: auto;
+}
+
+/* Sidebar logo styles */
+.sidebar .logo-container {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 1rem;
+}
+
+.sidebar .logo-text h5 {
+    color: white !important;
+}
+
+.sidebar .logo-text small {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.sidebar .logo-icon {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Loading state for logo */
+.logo-loading {
+    position: relative;
+}
+
+.logo-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid transparent;
+    border-top-color: #4f46e5;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

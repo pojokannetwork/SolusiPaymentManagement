@@ -38,30 +38,51 @@ if (preg_match('#^api/#', $path)) {
 function handleApiRoute($path) {
     // Remove 'api/' prefix
     $apiPath = substr($path, 4);
+    $apiPath = trim($apiPath, '/');
 
-    // Parse API path
-    $parts = explode('/', $apiPath);
-    $version = $parts[0] ?? 'v1';
-    $section = $parts[1] ?? '';
-    $action = $parts[2] ?? '';
-
-    // Build file path
-    if ($section === 'payment_callback') {
-        $filePath = "api/payment_callback.php";
-    } elseif ($section === 'public' && $action) {
-        $filePath = "api/public/{$action}.php";
-    } elseif ($section && $action) {
-        $filePath = "api/{$section}/{$action}.php";
-    } else {
-        $filePath = "api/{$section}.php";
+    // Basic sanitization to avoid directory traversal
+    if (strpos($apiPath, '..') !== false) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid API path']);
+        return;
     }
 
-    if (file_exists($filePath)) {
-        require_once $filePath;
+    $fileCandidates = [];
+
+    if ($apiPath === '') {
+        $fileCandidates[] = 'api/index.php';
     } else {
-        http_response_code(404);
-        echo json_encode(['error' => 'API endpoint not found']);
+        // Try direct mapping: api/foo/bar -> api/foo/bar.php
+        $fileCandidates[] = "api/{$apiPath}.php";
+
+        // Backwards compatibility for legacy structure where only section/action were used
+        $parts = explode('/', $apiPath);
+        if (count($parts) >= 2) {
+            $section = $parts[0];
+            $action = $parts[1];
+            $fileCandidates[] = "api/{$section}/{$action}.php";
+        }
+        if (count($parts) >= 3) {
+            $section = $parts[1];
+            $action = $parts[2];
+            $fileCandidates[] = "api/{$section}/{$action}.php";
+        }
+
+        // Special handling for payment callback
+        if (in_array('payment_callback', $parts, true)) {
+            $fileCandidates[] = 'api/payment_callback.php';
+        }
     }
+
+    foreach ($fileCandidates as $filePath) {
+        if (file_exists($filePath)) {
+            require_once $filePath;
+            return;
+        }
+    }
+
+    http_response_code(404);
+    echo json_encode(['error' => 'API endpoint not found']);
 }
 
 function handleAdminRoute($path) {

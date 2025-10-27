@@ -1,0 +1,17 @@
+{
+  "name": "whatsapp-worker",
+  "version": "1.0.0",
+  "description": "Automated WhatsApp sender for SolusiPaymentManagement (using WhatsApp Web, no third-party API).",
+  "main": "worker.js",
+  "type": "module",
+  "scripts": {
+    "start": "node worker.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "mysql2": "^3.9.7",
+    "qrcode": "^1.5.3",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.24.0"
+  }
+}

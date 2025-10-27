@@ -1,0 +1,324 @@
+<?php
+$page_title = 'Customers';
+require_once __DIR__ . '/../includes/admin_header.php';
+
+// Add page-specific stylesheets
+function add_styles() {
+    echo '<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">';
+}
+
+// Check authentication and permissions
+$guard->requirePermission('admin.customers');
+?>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Customers</h2>
+    <button class="btn btn-primary" onclick="showCreateModal()">
+        <i class="fas fa-plus me-2"></i>Add Customer
+    </button>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <input type="text" class="form-control" id="search-input" placeholder="Search customers...">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="status-filter">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="isolir">Isolir</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="terminated">Terminated</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                    <i class="fas fa-times me-2"></i>Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customers Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="customers-table" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Package</th>
+                        <th>Status</th>
+                        <th>PPPoE User</th>
+                        <th>Router</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<?php include '../templates/admin/customer_modals.php'; ?>
+
+<?php
+$page_specific_scripts = <<<'EOT'
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<script>
+    let customersTable;
+    let customerModal;
+    let whatsAppModal;
+    let currentWhatsAppCustomerId = null;
+
+    $(document).ready(function() {
+        customerModal = new bootstrap.Modal(document.getElementById('customerModal'));
+        whatsAppModal = new bootstrap.Modal(document.getElementById('whatsAppModal'));
+        initializeTable();
+        loadRouters();
+        setupEventListeners();
+    });
+
+    function initializeTable() {
+        customersTable = $('#customers-table').DataTable({
+            ajax: {
+                url: '/api/admin/customers?action=list',
+                dataSrc: 'data.customers',
+                data: function(d) {
+                    d.search = $('#search-input').val();
+                    d.status = $('#status-filter').val();
+                }
+            },
+            columns: [
+                { data: 'kode_pelanggan' },
+                { data: 'nama' },
+                { data: 'email' },
+                { data: 'telp' },
+                { data: 'paket' },
+                {
+                    data: 'status',
+                    render: function(data) {
+                        const badges = {
+                            'active': '<span class="badge bg-success">Active</span>',
+                            'isolir': '<span class="badge bg-danger">Isolir</span>',
+                            'suspended': '<span class="badge bg-warning">Suspended</span>',
+                            'terminated': '<span class="badge bg-secondary">Terminated</span>'
+                        };
+                        return badges[data] || data;
+                    }
+                },
+                { data: 'pppoe_user' },
+                { data: 'router_name', defaultContent: '-' },
+                {
+                    data: 'created_at',
+                    render: function(data) {
+                        return new Date(data).toLocaleDateString('id-ID');
+                    }
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    render: function(data) {
+                        return `
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="editCustomer(${data.id})" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-danger" onclick="deleteCustomer(${data.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                                <button class="btn btn-outline-warning" onclick="toggleCustomerStatus(${data.id}, '${data.status}')" title="Toggle Status"><i class="fas fa-${data.status === 'active' ? 'ban' : 'check'}"></i></button>
+                                <button class="btn btn-outline-success" onclick="openWhatsAppModal(${data.id})" title="Send WhatsApp"><i class="fab fa-whatsapp"></i></button>
+                            </div>
+                        `;
+                    }
+                }
+            ],
+            pageLength: 25,
+            responsive: true,
+            language: { emptyTable: "No customers found" }
+        });
+    }
+
+    function loadRouters() {
+        $.get('/api/admin/mikrotik?action=routers').done(function(response) {
+            if (response.success) {
+                let options = '<option value="">Select Router</option>';
+                (response.data?.routers || []).forEach(router => options += `<option value="${router.id}">${router.name}</option>`);
+                $('#router_id').html(options);
+            }
+        });
+    }
+
+    function setupEventListeners() {
+        $('#search-input, #status-filter').on('input change', () => customersTable.ajax.reload());
+        $('#customer-form').on('submit', e => { e.preventDefault(); saveCustomer(); });
+        $('#wa-copy-message').on('click', function() {
+            const message = $('#wa-message').text().trim();
+            if (!message) return showWhatsAppAlert('No message to copy.', 'warning');
+            navigator.clipboard.writeText(message)
+                .then(() => showWhatsAppAlert('Message copied successfully.', 'success', 2000))
+                .catch(() => showWhatsAppAlert('Failed to copy message.', 'danger'));
+        });
+        $('#wa-open-link').on('click', () => { const link = $('#wa-link').val(); if(link) window.open(link, '_blank'); });
+        $('#wa-download-qr').on('click', function() {
+            const dataUrl = $(this).data('qr');
+            if (!dataUrl) return showWhatsAppAlert('QR not available.', 'warning');
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'whatsapp-qr.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+        $('#wa-queue').on('click', function() {
+            if (!currentWhatsAppCustomerId) return showWhatsAppAlert('Customer ID not found.', 'danger');
+            $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+            $.post('/api/admin/whatsapp_notifications.php?action=queue_registration', JSON.stringify({ customer_id: currentWhatsAppCustomerId }), null, 'json')
+            .done(response => {
+                if (!response.success) throw new Error(response.message || 'Failed to add to queue');
+                showWhatsAppAlert('Registration message queued.', 'success');
+            })
+            .fail(xhr => showWhatsAppAlert(xhr.responseJSON?.message || 'Server error.', 'danger'))
+            .always(() => $(this).prop('disabled', false).html('<i class="fas fa-paper-plane me-2"></i>Queue Sending'));
+        });
+    }
+
+    function showCreateModal() {
+        $('#modal-title').text('Add Customer');
+        $('#customer-form')[0].reset();
+        $('#customer-id').val('');
+        customerModal.show();
+    }
+
+    function openWhatsAppModal(customerId) {
+        if (!customerId) return;
+        resetWhatsAppModal();
+        currentWhatsAppCustomerId = customerId;
+        whatsAppModal.show();
+        $.post('/api/admin/whatsapp_notifications.php?action=preview', JSON.stringify({ type: 'registration', customer_id: customerId }), null, 'json')
+        .done(response => {
+            if (!response.success) return showWhatsAppAlert(response.message || 'Failed to create WhatsApp message.', 'danger');
+            renderWhatsAppPreview(response.data);
+        })
+        .fail(xhr => showWhatsAppAlert(xhr.responseJSON?.message || 'Server error.', 'danger'));
+    }
+
+    function resetWhatsAppModal() {
+        $('#whatsapp-alert').empty();
+        $('#wa-phone').text('-');
+        $('#wa-link').val('');
+        $('#wa-open-link').prop('disabled', true);
+        $('#wa-message').text('Loading message...');
+        $('#wa-qr').hide().attr('src', '');
+        $('#wa-qr-placeholder').show().text('QR will appear here');
+        $('#wa-download-qr').prop('disabled', true).removeData('qr');
+        $('#wa-queue').prop('disabled', false).html('<i class="fas fa-paper-plane me-2"></i>Queue Sending');
+        currentWhatsAppCustomerId = null;
+    }
+
+    function renderWhatsAppPreview(data) {
+        $('#wa-phone').text(data.phone || '-');
+        $('#wa-link').val(data.link || '');
+        $('#wa-message').text(data.message || '-');
+        $('#wa-open-link').prop('disabled', !data.link);
+        if (data.qr) {
+            $('#wa-qr').attr('src', data.qr).show();
+            $('#wa-qr-placeholder').hide();
+            $('#wa-download-qr').prop('disabled', false).data('qr', data.qr);
+        } else {
+            $('#wa-qr').hide();
+            $('#wa-qr-placeholder').show().text('QR not available');
+            $('#wa-download-qr').prop('disabled', true).removeData('qr');
+        }
+    }
+
+    function showWhatsAppAlert(message, type = 'info', timeout = 4000) {
+        const alert = $(`<div class="alert alert-${type} alert-dismissible fade show" role="alert">${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`);
+        $('#whatsapp-alert').append(alert);
+        if (timeout > 0) setTimeout(() => alert.alert('close'), timeout);
+    }
+
+    function editCustomer(id) {
+        $.get(`/api/admin/customers?id=${id}`).done(response => {
+            if (response.success && response.data?.customer) {
+                const cust = response.data.customer;
+                $('#modal-title').text('Edit Customer');
+                $('#customer-id').val(cust.id);
+                $('#nama').val(cust.nama);
+                $('#email').val(cust.email);
+                $('#telp').val(cust.telp);
+                $('#paket').val(cust.paket);
+                $('#alamat').val(cust.alamat);
+                $('#pppoe_user').val(cust.pppoe_user);
+                $('#router_id').val(cust.router_id);
+                $('#status').val(cust.status);
+                $('#profile_aktif').val(cust.profile_aktif);
+                $('#profile_isolir').val(cust.profile_isolir);
+                customerModal.show();
+            }
+        });
+    }
+
+    function saveCustomer() {
+        const form = document.getElementById('customer-form');
+        const formData = new FormData(form);
+        const isEdit = formData.get('id') !== '';
+        $('#save-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
+        $.ajax({ url: '/api/admin/customers?action=' + (isEdit ? 'update' : 'create'), method: 'POST', data: formData, processData: false, contentType: false })
+        .done(response => {
+            if (response.success) {
+                customerModal.hide();
+                customersTable.ajax.reload();
+                alert('Customer ' + (isEdit ? 'updated' : 'created') + ' successfully');
+            } else {
+                alert(response.message || 'Error saving customer');
+            }
+        })
+        .fail(xhr => alert(xhr.responseJSON?.message || 'Error saving customer'))
+        .always(() => $('#save-btn').prop('disabled', false).html('<i class="fas fa-save me-2"></i>Save'));
+    }
+
+    function deleteCustomer(id) {
+        if (!confirm('Are you sure?')) return;
+        $.post(`/api/admin/customers?action=delete&id=${id}`)
+        .done(response => {
+            if (response.success) {
+                customersTable.ajax.reload();
+                alert('Customer deleted');
+            } else {
+                alert(response.message || 'Error deleting customer');
+            }
+        });
+    }
+
+    function toggleCustomerStatus(id, currentStatus) {
+        const action = currentStatus === 'active' ? 'isolir' : 'activate';
+        if (!confirm(`Are you sure you want to ${action} this customer?`)) return;
+        $.post(`/api/admin/customers?action=${action}&id=${id}`)
+        .done(response => {
+            if (response.success) {
+                customersTable.ajax.reload();
+                alert(`Customer ${action}d successfully`);
+            } else {
+                alert(response.message || `Error ${action}ing customer`);
+            }
+        });
+    }
+
+    function clearFilters() {
+        $('#search-input').val('');
+        $('#status-filter').val('');
+        customersTable.ajax.reload();
+    }
+</script>
+EOT;
+
+require_once __DIR__ . '/../includes/admin_footer.php';
+?>

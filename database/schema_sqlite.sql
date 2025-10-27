@@ -313,6 +313,94 @@ INSERT INTO settings (key, value) VALUES
 ('source_of_truth', 'radius');
 
 -- Insert default roles
+
+-- Warehouse / Inventory tables (SQLite)
+CREATE TABLE IF NOT EXISTS inventory_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS inventory_locations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS inventory_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    category_id INTEGER,
+    unit TEXT DEFAULT 'pcs',
+    stock_qty REAL DEFAULT 0,
+    location_id INTEGER,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (category_id) REFERENCES inventory_categories(id) ON DELETE SET NULL,
+    FOREIGN KEY (location_id) REFERENCES inventory_locations(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS inventory_receipts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_no TEXT NOT NULL UNIQUE,
+    date TEXT NOT NULL,
+    supplier TEXT,
+    status TEXT DEFAULT 'Draft',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS inventory_receipt_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    receipt_id INTEGER NOT NULL,
+    item_id INTEGER NOT NULL,
+    qty REAL NOT NULL,
+    unit TEXT DEFAULT 'pcs',
+    note TEXT,
+    FOREIGN KEY (receipt_id) REFERENCES inventory_receipts(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES inventory_items(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS inventory_issues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_no TEXT NOT NULL UNIQUE,
+    date TEXT NOT NULL,
+    target TEXT,
+    status TEXT DEFAULT 'Draft',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS inventory_issue_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    issue_id INTEGER NOT NULL,
+    item_id INTEGER NOT NULL,
+    qty REAL NOT NULL,
+    unit TEXT DEFAULT 'pcs',
+    note TEXT,
+    FOREIGN KEY (issue_id) REFERENCES inventory_issues(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES inventory_items(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS inventory_adjustments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_no TEXT NOT NULL UNIQUE,
+    date TEXT NOT NULL,
+    item_id INTEGER NOT NULL,
+    change_qty REAL NOT NULL,
+    note TEXT,
+    status TEXT DEFAULT 'Draft',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (item_id) REFERENCES inventory_items(id) ON DELETE RESTRICT
+);
 INSERT INTO peran (nama, deskripsi) VALUES
 ('admin', 'Administrator with full access'),
 ('employee', 'Employee with limited access'),

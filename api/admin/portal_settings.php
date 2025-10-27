@@ -18,30 +18,23 @@ if (isset($_GET['action']) && $_GET['action'] === 'remove_logo') {
     global $db;
     
     // Get current settings
-    $settings = $db->fetchOne("SELECT * FROM settings WHERE setting_key = 'portal_config'");
-    if ($settings) {
-        $config = json_decode($settings['setting_value'], true);
-        
-        // Delete logo file if exists
-        if (!empty($config['logo'])) {
-            $logoPath = __DIR__ . '/../../assets/uploads/' . $config['logo'];
-            if (file_exists($logoPath)) {
-                unlink($logoPath);
-            }
-        }
-        
-        // Update config
-        $config['logo'] = null;
-        $db->execute(
-            "UPDATE settings SET setting_value = ?, updated_at = datetime('now') WHERE setting_key = 'portal_config'",
-            [json_encode($config)]
-        );
-        
-        logSecurityEvent('portal_settings_updated', ['action' => 'remove_logo']);
-        successResponse(['message' => 'Logo removed successfully']);
+    $settingsJson = getSetting('portal_config');
+    $config = $settingsJson ? json_decode($settingsJson, true) : [];
+    if (!is_array($config)) {
+        $config = [];
     }
-    
-    errorResponse('Settings not found', 404);
+    // Delete logo file if exists
+    if (!empty($config['logo'])) {
+        $logoPath = __DIR__ . '/../../assets/uploads/' . $config['logo'];
+        if (file_exists($logoPath)) {
+            unlink($logoPath);
+        }
+    }
+    // Update config
+    $config['logo'] = null;
+    setSetting('portal_config', json_encode($config));
+    logSecurityEvent('portal_settings_updated', ['action' => 'remove_logo']);
+    successResponse(['message' => 'Logo removed successfully']);
 }
 
 // Handle portal settings update
@@ -49,14 +42,23 @@ global $db;
 
 try {
     // Get current settings
-    $settings = $db->fetchOne("SELECT * FROM settings WHERE setting_key = 'portal_config'");
-    $config = $settings ? json_decode($settings['setting_value'], true) : [];
+    $settingsJson = getSetting('portal_config');
+    $config = $settingsJson ? json_decode($settingsJson, true) : [];
+    if (!is_array($config)) {
+        $config = [];
+    }
     
     // Update text fields
     $config['title'] = sanitizeInput($_POST['title'] ?? 'SolusiPaymentManagement');
     $config['tagline'] = sanitizeInput($_POST['tagline'] ?? 'Sistem Manajemen Pembayaran & ISP Terdepan');
     $config['description'] = sanitizeInput($_POST['description'] ?? 'Platform terintegrasi untuk manajemen pelanggan, pembayaran, dan operasional ISP.');
     $config['primary_color'] = sanitizeInput($_POST['primary_color'] ?? '#2563eb');
+
+    // Language selection (stored as a separate setting for global use)
+    if (isset($_POST['language'])) {
+        $lang = $_POST['language'] === 'en' ? 'en' : 'id';
+        setSetting('language', $lang);
+    }
     
     // Handle logo upload
     if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
@@ -135,26 +137,23 @@ try {
     }
     
     // Save settings to database
-    if ($settings) {
-        // Update existing settings
-        $db->execute(
-            "UPDATE settings SET setting_value = ?, updated_at = datetime('now') WHERE setting_key = 'portal_config'",
-            [json_encode($config)]
-        );
-    } else {
-        // Insert new settings
-        $db->execute(
-            "INSERT INTO settings (setting_key, setting_value, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))",
-            ['portal_config', json_encode($config)]
-        );
+    setSetting('portal_config', json_encode($config));
+
+    $decodedConfig = $config;
+    if (is_array($decodedConfig)) {
+        array_walk_recursive($decodedConfig, function (&$value) {
+            if (is_string($value)) {
+                $value = htmlspecialchars_decode($value, ENT_QUOTES);
+            }
+        });
     }
     
     // Log activity
-    logSecurityEvent('portal_settings_updated', ['config' => $config]);
+    logSecurityEvent('portal_settings_updated', ['config' => $decodedConfig]);
     
     successResponse([
         'message' => 'Portal settings saved successfully',
-        'config' => $config
+        'config' => $decodedConfig
     ]);
     
 } catch (Exception $e) {

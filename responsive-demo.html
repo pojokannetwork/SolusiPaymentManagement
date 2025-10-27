@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Demo - SolusiPaymentManagement</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Styles -->
+    <link href="/assets/css/style.css" rel="stylesheet">
+    <link href="/assets/css/responsive.css" rel="stylesheet">
+
+    <style>
+        .demo-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .demo-title {
+            color: #4f46e5;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e0e7ff;
+        }
+        
+        .device-preview {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .device-frame {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 0.5rem;
+            background: #f8f9fa;
+        }
+        
+        .mobile-frame {
+            width: 200px;
+            height: 350px;
+        }
+        
+        .tablet-frame {
+            width: 300px;
+            height: 400px;
+        }
+        
+        .desktop-frame {
+            width: 400px;
+            height: 300px;
+        }
+        
+        .responsive-grid-demo {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+        
+        .grid-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Responsive Sidebar -->
+            <nav class="col-lg-3 col-md-4 sidebar sidebar-responsive bg-light">
+                <div class="p-3">
+                    <h5 class="text-primary">
+                        <i class="fas fa-mobile-alt me-2"></i>
+                        Responsive Demo
+                    </h5>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#grid-demo">
+                                <i class="fas fa-th me-2"></i>Grid System
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#table-demo">
+                                <i class="fas fa-table me-2"></i>Responsive Tables
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#form-demo">
+                                <i class="fas fa-form me-2"></i>Forms
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#card-demo">
+                                <i class="fas fa-id-card me-2"></i>Cards
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-lg-9 col-md-8 ms-sm-auto px-md-4 main-content">
+                <!-- Top Bar with Toggle -->
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <div class="d-flex align-items-center">
+                        <button class="sidebar-toggle btn btn-outline-primary d-lg-none me-3" onclick="toggleSidebar()">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <h1 class="h2 heading-responsive">Responsive Features Demo</h1>
+                    </div>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2 btn-group-responsive">
+                            <button class="btn btn-sm btn-outline-secondary">Mobile</button>
+                            <button class="btn btn-sm btn-outline-secondary">Tablet</button>
+                            <button class="btn btn-sm btn-outline-secondary">Desktop</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Responsive Grid Demo -->
+                <section id="grid-demo" class="demo-section">
+                    <h3 class="demo-title">
+                        <i class="fas fa-th me-2"></i>Responsive Grid System
+                    </h3>
+                    <p class="text-muted">Grid yang otomatis menyesuaikan jumlah kolom berdasarkan ukuran layar.</p>
+                    
+                    <div class="responsive-grid-demo">
+                        <div class="grid-item">Item 1</div>
+                        <div class="grid-item">Item 2</div>
+                        <div class="grid-item">Item 3</div>
+                        <div class="grid-item">Item 4</div>
+                        <div class="grid-item">Item 5</div>
+                        <div class="grid-item">Item 6</div>
+                    </div>
+                </section>
+
+                <!-- Responsive Table Demo -->
+                <section id="table-demo" class="demo-section">
+                    <h3 class="demo-title">
+                        <i class="fas fa-table me-2"></i>Responsive Tables
+                    </h3>
+                    <p class="text-muted">Tabel yang berubah menjadi card-style di mobile.</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-mobile table-striped">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td data-label="ID">001</td>
+                                    <td data-label="Customer">John Doe</td>
+                                    <td data-label="Amount">Rp 150,000</td>
+                                    <td data-label="Status"><span class="badge bg-success">Paid</span></td>
+                                    <td data-label="Date">26 Oct 2025</td>
+                                    <td data-label="Actions">
+                                        <button class="btn btn-sm btn-primary">View</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td data-label="ID">002</td>
+                                    <td data-label="Customer">Jane Smith</td>
+                                    <td data-label="Amount">Rp 200,000</td>
+                                    <td data-label="Status"><span class="badge bg-warning">Pending</span></td>
+                                    <td data-label="Date">25 Oct 2025</td>
+                                    <td data-label="Actions">
+                                        <button class="btn btn-sm btn-primary">View</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td data-label="ID">003</td>
+                                    <td data-label="Customer">Bob Johnson</td>
+                                    <td data-label="Amount">Rp 75,000</td>
+                                    <td data-label="Status"><span class="badge bg-danger">Failed</span></td>
+                                    <td data-label="Date">24 Oct 2025</td>
+                                    <td data-label="Actions">
+                                        <button class="btn btn-sm btn-primary">View</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Responsive Form Demo -->
+                <section id="form-demo" class="demo-section">
+                    <h3 class="demo-title">
+                        <i class="fas fa-form me-2"></i>Responsive Forms
+                    </h3>
+                    <p class="text-muted">Form yang menyesuaikan layout di berbagai ukuran layar.</p>
+                    
+                    <form class="form-responsive">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" placeholder="Enter full name">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" placeholder="Enter email">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" class="form-control" placeholder="Phone number">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Amount</label>
+                                    <input type="number" class="form-control" placeholder="Amount">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-control">
+                                        <option>Active</option>
+                                        <option>Inactive</option>
+                                        <option>Pending</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="btn-group-responsive d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-responsive">
+                                <i class="fas fa-save me-2"></i>Save
+                            </button>
+                            <button type="reset" class="btn btn-secondary btn-responsive">
+                                <i class="fas fa-undo me-2"></i>Reset
+                            </button>
+                            <button type="button" class="btn btn-danger btn-responsive">
+                                <i class="fas fa-trash me-2"></i>Delete
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Responsive Cards Demo -->
+                <section id="card-demo" class="demo-section">
+                    <h3 class="demo-title">
+                        <i class="fas fa-id-card me-2"></i>Responsive Cards
+                    </h3>
+                    <p class="text-muted">Cards yang menyesuaikan dengan ukuran layar.</p>
+                    
+                    <div class="row">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card card-responsive stat-card-responsive">
+                                <div class="card-body text-center">
+                                    <div class="stat-icon bg-primary text-white rounded-circle mx-auto mb-3">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <h3 class="mb-1">1,234</h3>
+                                    <p class="text-muted mb-0">Total Customers</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card card-responsive stat-card-responsive">
+                                <div class="card-body text-center">
+                                    <div class="stat-icon bg-success text-white rounded-circle mx-auto mb-3">
+                                        <i class="fas fa-money-bill"></i>
+                                    </div>
+                                    <h3 class="mb-1">Rp 5.6M</h3>
+                                    <p class="text-muted mb-0">Total Revenue</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card card-responsive stat-card-responsive">
+                                <div class="card-body text-center">
+                                    <div class="stat-icon bg-warning text-white rounded-circle mx-auto mb-3">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                    <h3 class="mb-1">23</h3>
+                                    <p class="text-muted mb-0">Pending</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card card-responsive stat-card-responsive">
+                                <div class="card-body text-center">
+                                    <div class="stat-icon bg-danger text-white rounded-circle mx-auto mb-3">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </div>
+                                    <h3 class="mb-1">7</h3>
+                                    <p class="text-muted mb-0">Issues</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Screen Size Indicator -->
+                <div class="demo-section">
+                    <h3 class="demo-title">
+                        <i class="fas fa-desktop me-2"></i>Current Screen Size
+                    </h3>
+                    <div class="alert alert-info">
+                        <div class="d-block d-sm-none">
+                            <i class="fas fa-mobile-alt me-2"></i>Extra Small (< 576px)
+                        </div>
+                        <div class="d-none d-sm-block d-md-none">
+                            <i class="fas fa-mobile-alt me-2"></i>Small (≥ 576px)
+                        </div>
+                        <div class="d-none d-md-block d-lg-none">
+                            <i class="fas fa-tablet-alt me-2"></i>Medium (≥ 768px)
+                        </div>
+                        <div class="d-none d-lg-block d-xl-none">
+                            <i class="fas fa-laptop me-2"></i>Large (≥ 992px)
+                        </div>
+                        <div class="d-none d-xl-block">
+                            <i class="fas fa-desktop me-2"></i>Extra Large (≥ 1200px)
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Sidebar toggle functionality
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar-responsive');
+            sidebar.classList.toggle('show');
+            
+            // Add overlay for mobile
+            if (window.innerWidth <= 991) {
+                let overlay = document.querySelector('.sidebar-overlay');
+                if (sidebar.classList.contains('show')) {
+                    if (!overlay) {
+                        overlay = document.createElement('div');
+                        overlay.className = 'sidebar-overlay';
+                        overlay.style.display = 'block';
+                        overlay.onclick = toggleSidebar;
+                        document.body.appendChild(overlay);
+                    }
+                } else {
+                    if (overlay) {
+                        overlay.remove();
+                    }
+                }
+            }
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            const sidebar = document.querySelector('.sidebar-responsive');
+            const overlay = document.querySelector('.sidebar-overlay');
+            
+            if (window.innerWidth > 991) {
+                sidebar.classList.remove('show');
+                if (overlay) {
+                    overlay.remove();
+                }
+            }
+        });
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

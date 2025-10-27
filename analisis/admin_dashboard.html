@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SolusiPaymentManagement</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --sidebar-width: 250px;
+            --navbar-height: 56px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            background: #343a40;
+            min-height: 100vh;
+            width: var(--sidebar-width);
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1040;
+            overflow-y: auto;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.75);
+            padding: 0.75rem 1rem;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar .nav-link:hover {
+            color: #fff;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left-color: #0d6efd;
+        }
+
+        .sidebar .nav-link.active {
+            color: #fff;
+            background-color: #0d6efd;
+            border-left-color: #fff;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-header h5 {
+            margin: 0;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+            flex-grow: 1;
+        }
+
+        .sidebar-footer {
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: auto;
+        }
+
+        /* Top Navbar for Mobile */
+        .top-navbar {
+            background: #343a40;
+            color: #fff;
+            padding: 0.5rem 1rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--navbar-height);
+            z-index: 1030;
+            display: none;
+        }
+
+        .top-navbar .navbar-brand {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .top-navbar .btn-menu {
+            background: #0d6efd;
+            border: none;
+            color: #fff;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .top-navbar .btn-menu:hover {
+            background: #0b5ed7;
+            color: #fff;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 2rem 1rem;
+            min-height: 100vh;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-header h2 {
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+
+        /* Stat Cards */
+        .stat-card {
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card .card-body {
+            padding: 1.5rem;
+        }
+
+        .stat-card .card-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card h3 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        /* Chart Cards */
+        .card {
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            padding: 1rem 1.5rem;
+        }
+
+        .card-header h5 {
+            margin: 0;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 767.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 100%;
+                max-width: var(--sidebar-width);
+                height: 100vh;
+                top: var(--navbar-height);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .top-navbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding-top: calc(var(--navbar-height) + 1rem);
+            }
+
+            .stat-card h3 {
+                font-size: 1.5rem;
+            }
+
+            .page-header {
+                margin-bottom: 1rem;
+            }
+
+            .page-header h2 {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Scrollbar Styling */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Utility Classes */
+        .text-muted-custom {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        /* Loading Spinner */
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+            border-width: 0.2em;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navbar for Mobile -->
+    <nav class="top-navbar">
+        <a class="navbar-brand" href="#">
+            <i class="fas fa-cogs me-2"></i>
+            SPM
+        </a>
+        <button class="btn btn-menu" type="button" id="sidebarToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+    </nav>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h5>
+                <i class="fas fa-cogs me-2"></i>
+                SolusiPaymentManagement
+            </h5>
+        </div>
+
+        <div class="sidebar-nav">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link active" href="admin/dashboard.php">
+                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="admin/customers.php">
+                        <i class="fas fa-users me-2"></i>Customers
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="admin/invoices.php">
+                        <i class="fas fa-file-invoice me-2"></i>Invoices
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="admin/transactions.php">
+                        <i class="fas fa-credit-card me-2"></i>Transactions
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="admin/payment_gateways.php">
+                        <i class="fas fa-money-check me-2"></i>Payment Gateways
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="admin/customers_map.php">
+                        <i class="fas fa-map-marked-alt me-2"></i>Customer Map
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="admin/settings.php">
+                        <i class="fas fa-cog me-2"></i>Settings
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="sidebar-footer">
+            <a class="nav-link text-danger" href="#" onclick="logout(); return false;">
+                <i class="fas fa-sign-out-alt me-2"></i>Logout
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <!-- Page Header -->
+            <div class="page-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>Dashboard</h2>
+                </div>
+                <div class="text-muted-custom">
+                    Welcome, <strong>Administrator</strong>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row mb-4" id="stats-cards">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-title">Total Customers</h6>
+                                    <h3 id="total-customers">-</h3>
+                                </div>
+                                <i class="fas fa-users fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-title">Active Customers</h6>
+                                    <h3 id="active-customers">-</h3>
+                                </div>
+                                <i class="fas fa-user-check fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-title">Pending Invoices</h6>
+                                    <h3 id="pending-invoices">-</h3>
+                                </div>
+                                <i class="fas fa-clock fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stat-card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-title">Revenue This Month</h6>
+                                    <h3 id="monthly-revenue">-</h3>
+                                </div>
+                                <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="row mb-4">
+                <div class="col-lg-6 mb-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Revenue Trend</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="revenueChart" height="80"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Customer Status</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="customerStatusChart" height="80"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="row">
+                <div class="col-lg-6 mb-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Recent Payments</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="recent-payments" class="list-group list-group-flush">
+                                <div class="text-center text-muted py-4">
+                                    <div class="spinner-border spinner-border-sm mb-2" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <div>Loading...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Recent Activity</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="recent-activity" class="list-group list-group-flush">
+                                <div class="text-center text-muted py-4">
+                                    <div class="spinner-border spinner-border-sm mb-2" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <div>Loading...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // CSRF token for AJAX requests
+        const csrfToken = '06cd4e4ff301e242eb38c03bb9f1eac01f903131c752423bee66fb3e393e71f3';
+
+        // Add CSRF token to all AJAX requests
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-Token': csrfToken
+            }
+        });
+
+        // Sidebar Toggle for Mobile
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('show');
+        });
+
+        // Close sidebar when a link is clicked on mobile
+        document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth < 768) {
+                    document.getElementById('sidebar').classList.remove('show');
+                }
+            });
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('sidebarToggle');
+            
+            if (window.innerWidth < 768) {
+                if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
+
+        // Load dashboard data
+        $(document).ready(function() {
+            loadStats();
+            loadCharts();
+            loadRecentData();
+        });
+
+        function loadStats() {
+            $.get('/api/admin/dashboard/stats')
+                .done(function(response) {
+                    if (response.success) {
+                        $('#total-customers').text(response.data.total_customers);
+                        $('#active-customers').text(response.data.active_customers);
+                        $('#pending-invoices').text(response.data.pending_invoices);
+                        $('#monthly-revenue').text(formatCurrency(response.data.monthly_revenue));
+                    }
+                })
+                .fail(function() {
+                    console.error('Failed to load stats');
+                });
+        }
+
+        function loadCharts() {
+            // Revenue chart
+            $.get('/api/admin/dashboard/revenue_chart')
+                .done(function(response) {
+                    if (response.success) {
+                        const ctx = document.getElementById('revenueChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: response.data,
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: true,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+
+            // Customer status chart
+            $.get('/api/admin/dashboard/customer_status_chart')
+                .done(function(response) {
+                    if (response.success) {
+                        const ctx = document.getElementById('customerStatusChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'doughnut',
+                            data: response.data,
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: true
+                            }
+                        });
+                    }
+                });
+        }
+
+        function loadRecentData() {
+            // Load recent payments
+            $.get('/api/admin/dashboard/recent_payments')
+                .done(function(response) {
+                    if (response.success && response.data.length > 0) {
+                        let html = '';
+                        response.data.forEach(payment => {
+                            html += `
+                                <a href="#" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>${payment.customer_name}</strong>
+                                        <span class="badge bg-success">${formatCurrency(payment.amount)}</span>
+                                    </div>
+                                    <small class="text-muted">${payment.date}</small>
+                                </a>
+                            `;
+                        });
+                        $('#recent-payments').html(html);
+                    }
+                });
+
+            // Load recent activity
+            $.get('/api/admin/dashboard/recent_activity')
+                .done(function(response) {
+                    if (response.success && response.data.length > 0) {
+                        let html = '';
+                        response.data.forEach(activity => {
+                            html += `
+                                <a href="#" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>${activity.action}</strong>
+                                        <small class="text-muted">${activity.user}</small>
+                                    </div>
+                                    <small class="text-muted">${activity.timestamp}</small>
+                                </a>
+                            `;
+                        });
+                        $('#recent-activity').html(html);
+                    }
+                });
+        }
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(value);
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                window.location.href = '/api/public/logout';
+            }
+        }
+    </script>
+</body>
+</html>
+

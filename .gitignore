@@ -1,0 +1,15 @@
+# Ignore nested git repositories and heavy vendor assets
+fiber-optic-management/backend/
+includes/thirdparty/Net_RouterOS/
+includes/thirdparty/Net_Transmitter/
+
+# Logs and uploads
+logs/
+assets/uploads/
+
+# OS/Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+

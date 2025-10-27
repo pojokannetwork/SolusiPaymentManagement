@@ -313,6 +313,18 @@ function processPaymentCallback($callbackResult, $gatewayId) {
         provisionCustomerOnPayment($transaction['pelanggan_id']);
 
         $logger->logPayment('paid', $transaction['faktur_id'], $transaction['amount'], 'callback');
+
+        // Credit mitra share if mapping exists
+        try {
+            creditMitraShare(
+                (int)$transaction['id'],
+                (int)$transaction['faktur_id'],
+                (int)$transaction['pelanggan_id'],
+                (float)$transaction['amount']
+            );
+        } catch (Throwable $e) {
+            error_log('Credit mitra share failed: ' . $e->getMessage());
+        }
     } elseif (in_array($status, ['failed', 'expired'])) {
         // Provision customer (isolate service)
         provisionCustomerOnFailure($transaction['pelanggan_id']);
@@ -321,6 +333,84 @@ function processPaymentCallback($callbackResult, $gatewayId) {
     }
 
     successResponse(['status' => 'OK', 'processed' => true]);
+}
+
+// Mitra revenue share
+function creditMitraShare(int $transactionId, int $invoiceId, int $customerId, float $paidAmount) {
+    global $db, $logger;
+    if ($paidAmount <= 0) return;
+
+    // Check mapping table
+    if (!tableExists('isp_agent_customers')) return;
+    $map = $db->fetchOne('SELECT agent_id, region, share_percent FROM isp_agent_customers WHERE customer_id = ?', [$customerId]);
+    if (!$map || empty($map['agent_id'])) return;
+
+    $agentId = (int)$map['agent_id'];
+    $region = (string)($map['region'] ?? '');
+    $percent = (float)($map['share_percent'] ?? 0);
+    if ($percent <= 0) {
+        // Fallback to agent default commission_rate
+        $agent = $db->fetchOne('SELECT commission_rate FROM isp_agents WHERE id = ?', [$agentId]);
+        $percent = (float)($agent['commission_rate'] ?? 0);
+    }
+    if ($percent <= 0) return;
+
+    $shareAmount = round($paidAmount * ($percent / 100), 2);
+    if ($shareAmount <= 0) return;
+
+    ensureAgentLedgerTable();
+
+    // Update balance (atomic)
+    $db->execute('UPDATE isp_agents SET balance = balance + ? WHERE id = ?', [$shareAmount, $agentId]);
+
+    // Insert ledger entry
+    $db->execute(
+        'INSERT INTO isp_agent_ledger (agent_id, customer_id, faktur_id, transaction_id, amount, share_percent, region, note) VALUES (?,?,?,?,?,?,?,?)',
+        [$agentId, $customerId, $invoiceId, $transactionId, $shareAmount, $percent, $region ?: null, 'Auto-share from payment callback']
+    );
+
+    if (isset($logger)) {
+        $logger->log('mitra_share_credited', [
+            'agent_id' => $agentId,
+            'customer_id' => $customerId,
+            'invoice_id' => $invoiceId,
+            'transaction_id' => $transactionId,
+            'amount' => $shareAmount,
+            'percent' => $percent,
+            'region' => $region
+        ]);
+    }
+}
+
+function ensureAgentLedgerTable() {
+    global $db;
+    $sql = "CREATE TABLE IF NOT EXISTS isp_agent_ledger (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        agent_id INT NOT NULL,
+        customer_id INT NOT NULL,
+        faktur_id INT NOT NULL,
+        transaction_id INT NOT NULL,
+        amount DECIMAL(12,2) NOT NULL,
+        share_percent DECIMAL(5,2) NOT NULL,
+        region VARCHAR(150) NULL,
+        note VARCHAR(255) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_agent (agent_id),
+        INDEX idx_customer (customer_id),
+        INDEX idx_invoice (faktur_id)
+    )";
+    $db->execute($sql);
+}
+
+function tableExists($table) {
+    global $db;
+    // Simple portable check
+    try {
+        $row = $db->fetchOne("SELECT 1 FROM {$table} LIMIT 1");
+        return true;
+    } catch (Throwable $e) {
+        return false;
+    }
 }
 
 function getGatewayByOrderId($orderId) {

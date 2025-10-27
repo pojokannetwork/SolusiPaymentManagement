@@ -25,7 +25,13 @@ class RouterGuard {
         }
 
         $sessionAge = time() - $_SESSION['login_time'];
-        return $sessionAge > SESSION_LIFETIME;
+        $defaultMinutes = max(1, intdiv(SESSION_LIFETIME, 60));
+        $lifetimeMinutes = (int) getSetting('session_lifetime_minutes', $defaultMinutes);
+        if ($lifetimeMinutes < 5 || $lifetimeMinutes > 480) {
+            $lifetimeMinutes = $defaultMinutes;
+        }
+        $sessionLifetimeSeconds = $lifetimeMinutes * 60;
+        return $sessionAge > $sessionLifetimeSeconds;
     }
 
     // Get current user with roles
@@ -148,6 +154,7 @@ class RouterGuard {
             '/admin/invoices' => ['admin.invoices'],
             '/admin/transactions' => ['admin.transactions'],
             '/admin/payment_gateways' => ['admin.payment_gateways'],
+            '/admin/whatsapp_notifications' => ['admin.customers'],
             '/admin/roles' => ['admin.roles'],
             '/admin/activity_logs' => ['admin.activity_logs'],
             '/admin/reports' => ['admin.reports'],
@@ -211,7 +218,7 @@ class RouterGuard {
 
         // Update last activity
         $db->execute(
-            "UPDATE pengguna SET updated_at = datetime('now') WHERE id = ?",
+            "UPDATE pengguna SET updated_at = NOW() WHERE id = ?",
             [$user['id']]
         );
 

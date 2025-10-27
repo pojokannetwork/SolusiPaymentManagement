@@ -2,6 +2,10 @@
 // SolusiPaymentManagement Bootstrap File
 // Include this at the top of all PHP files
 
+// Include configuration files first
+require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../config/database.php';
+
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -10,11 +14,28 @@ if (session_status() === PHP_SESSION_NONE) {
 // Set timezone
 date_default_timezone_set(APP_TIMEZONE);
 
-// Include configuration files
-require_once __DIR__ . '/../config/app.php';
-require_once __DIR__ . '/../config/database.php';
-
 // Include core includes
+spl_autoload_register(function ($class) {
+    // Autoload PEAR2 libraries bundled under includes/thirdparty
+    if (strpos($class, 'PEAR2\\') !== 0) {
+        return;
+    }
+
+    $relativePath = str_replace('\\', DIRECTORY_SEPARATOR, $class) . '.php';
+    $baseDirs = [
+        __DIR__ . '/thirdparty/Net_RouterOS/src/',
+        __DIR__ . '/thirdparty/Net_Transmitter/src/',
+    ];
+
+    foreach ($baseDirs as $baseDir) {
+        $file = $baseDir . $relativePath;
+        if (file_exists($file)) {
+            require_once $file;
+            return;
+        }
+    }
+});
+
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/router_guard.php';
 require_once __DIR__ . '/helpers.php';
@@ -24,7 +45,12 @@ require_once __DIR__ . '/activity_logger.php';
 require_once __DIR__ . '/ollama_ai.php';
 require_once __DIR__ . '/openstreetmap.php';
 require_once __DIR__ . '/mikrotik_api.php';
+require_once __DIR__ . '/mikrotik_service.php';
 require_once __DIR__ . '/radius_sql_coa.php';
+require_once __DIR__ . '/olt_monitoring.php';
+require_once __DIR__ . '/whatsapp_notifications.php';
+require_once __DIR__ . '/whatsapp_queue.php';
+require_once __DIR__ . '/fiber_management.php';
 
 // Include payment gateway adapters
 require_once __DIR__ . '/pg_adapter/PgAdapter.php';
@@ -46,6 +72,20 @@ if (!is_dir($logDir)) {
 // Initialize database connection
 global $db;
 $db = Database::getInstance();
+
+// Apply dynamic settings stored in database
+$storedTimezone = getSetting('timezone', APP_TIMEZONE);
+if (!empty($storedTimezone) && $storedTimezone !== date_default_timezone_get()) {
+    date_default_timezone_set($storedTimezone);
+}
+
+if (!defined('APP_DISPLAY_NAME')) {
+    define('APP_DISPLAY_NAME', getSetting('app_name', APP_NAME));
+}
+
+if (!defined('APP_CURRENCY')) {
+    define('APP_CURRENCY', getSetting('currency', 'IDR'));
+}
 
 // Global error handler for production
 if (APP_ENV !== 'development') {

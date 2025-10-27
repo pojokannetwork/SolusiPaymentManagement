@@ -45,6 +45,14 @@ function validatePhone($phone) {
 
 // Rate limiting for login attempts
 function checkRateLimit($identifier, $maxAttempts = RATE_LIMIT_LOGIN_ATTEMPTS, $lockTime = RATE_LIMIT_LOCK_TIME) {
+    $storedAttempts = getSetting('login_attempts', RATE_LIMIT_LOGIN_ATTEMPTS);
+    if (is_numeric($storedAttempts)) {
+        $attemptsVal = (int) $storedAttempts;
+        if ($attemptsVal >= 3 && $attemptsVal <= 10) {
+            $maxAttempts = $attemptsVal;
+        }
+    }
+
     $key = "rate_limit_{$identifier}";
     $attempts = $_SESSION[$key]['attempts'] ?? 0;
     $lastAttempt = $_SESSION[$key]['last_attempt'] ?? 0;

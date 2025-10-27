@@ -252,10 +252,39 @@ function getAssetCurrentValue($asset) {
     return max(0, $asset['nilai_perolehan'] - $totalDepreciation);
 }
 
-// Generate QR code data URL (requires QR code library)
+// Generate QR code data URL
 function generateQRCode($data, $size = 200) {
-    // This is a placeholder - implement with a QR code library like chillerlan/php-qrcode
-    return "data:image/png;base64," . base64_encode("QR Code for: {$data}");
+    static $qrLoaded = false;
+
+    if (!$qrLoaded) {
+        $vendorPath = __DIR__ . '/vendor/tcpdf_barcodes_2d.php';
+        if (!file_exists($vendorPath)) {
+            throw new RuntimeException('QR code library not found.');
+        }
+        require_once $vendorPath;
+        $qrLoaded = true;
+    }
+
+    if (!class_exists('TCPDF2DBarcode')) {
+        throw new RuntimeException('QR code generator not available.');
+    }
+
+    $qr = new TCPDF2DBarcode($data, 'QRCODE,H');
+    $matrix = $qr->getBarcodeArray();
+
+    if (empty($matrix['num_cols']) || empty($matrix['num_rows'])) {
+        throw new RuntimeException('Failed to generate QR matrix.');
+    }
+
+    $moduleWidth = max(1, (int) floor($size / $matrix['num_cols']));
+    $moduleHeight = max(1, (int) floor($size / $matrix['num_rows']));
+
+    $pngData = $qr->getBarcodePngData($moduleWidth, $moduleHeight, [0, 0, 0]);
+    if ($pngData === false) {
+        throw new RuntimeException('Failed to render QR code image. Ensure GD extension is enabled.');
+    }
+
+    return 'data:image/png;base64,' . base64_encode($pngData);
 }
 
 // Export to CSV
@@ -364,6 +393,29 @@ function hasPermission($permission) {
 
 function isAuthenticated() {
     return RouterGuard::getInstance()->isAuthenticated();
+}
+
+// Simple admin checker used by some legacy API endpoints
+function isAdmin() {
+    $user = getCurrentUser();
+    if (!$user) return false;
+    return ($user['role'] ?? null) === 'admin' || strtolower((string)($user['roles'] ?? '')) === 'admin';
+}
+
+// Lightweight DB helpers used by legacy API endpoints
+function db_query($sql, $params = []) {
+    global $db;
+    return $db->fetchAll($sql, $params);
+}
+
+function db_query_one($sql, $params = []) {
+    global $db;
+    return $db->fetchOne($sql, $params);
+}
+
+function db_exec($sql, $params = []) {
+    global $db;
+    return $db->execute($sql, $params);
 }
 
 // Activity Logger Helper Functions

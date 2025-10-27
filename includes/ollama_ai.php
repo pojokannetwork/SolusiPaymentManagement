@@ -15,9 +15,18 @@ class OllamaAI {
     }
 
     private function __construct() {
-        $this->host = OLLAMA_HOST;
-        $this->model = OLLAMA_MODEL;
-        $this->timeout = OLLAMA_TIMEOUT;
+        $this->loadConfig();
+    }
+
+    private function loadConfig() {
+        $this->host = getSetting('ollama_host', OLLAMA_HOST);
+        $this->model = getSetting('ollama_model', OLLAMA_MODEL);
+        $storedTimeout = (int) getSetting('ollama_timeout', OLLAMA_TIMEOUT);
+        $this->timeout = $storedTimeout > 0 ? $storedTimeout : OLLAMA_TIMEOUT;
+    }
+
+    public function refreshConfig() {
+        $this->loadConfig();
     }
 
     // Make request to Ollama API

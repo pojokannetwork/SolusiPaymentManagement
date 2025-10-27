@@ -1,460 +1,551 @@
 <?php
-// SolusiPaymentManagement Admin Customers Page
+$page_title = 'Customers';
+require_once __DIR__ . '/../includes/admin_header.php';
 
-require_once __DIR__ . '/../includes/bootstrap.php';
+// Add page-specific stylesheets
+function add_styles() {
+    echo '<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <!-- Custom Responsive Styles -->
+    <link href="/assets/css/style.css" rel="stylesheet">
+    <link href="/assets/css/responsive.css" rel="stylesheet">
+';
+}
 
 // Check authentication and permissions
-$guard = RouterGuard::getInstance();
 $guard->requirePermission('admin.customers');
-
-$user = getCurrentUser();
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customers - SolusiPaymentManagement</title>
 
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome 6 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- DataTables -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Customers</h2>
+    <button class="btn btn-primary" onclick="showCreateModal()">
+        <i class="fas fa-plus me-2"></i>Add Customer
+    </button>
+</div>
 
-    <style>
-        .sidebar { min-block-size: 100vh; background: #343a40; }
-        .sidebar .nav-link { color: rgba(255,255,255,.75); }
-        .sidebar .nav-link:hover { color: #fff; }
-        .sidebar .nav-link.active { color: #fff; background: #0d6efd; }
-        .main-content { margin-inline-start: 0; }
-        @media (min-inline-size: 768px) { .main-content { margin-inline-start: 250px; } }
-        .table-responsive { max-block-size: 600px; overflow-y: auto; }
-    </style>
-</head>
-<body>
-    <!-- Sidebar -->
-    <nav class="sidebar position-fixed" style="inline-size: 250px;">
-        <div class="p-3">
-            <h5 class="text-white mb-4">
-                <i class="fas fa-cogs me-2"></i>
-                SolusiPaymentManagement
-            </h5>
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php">
-                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="customers.php">
-                        <i class="fas fa-users me-2"></i>Customers
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="invoices.php">
-                        <i class="fas fa-file-invoice me-2"></i>Invoices
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="transactions.php">
-                        <i class="fas fa-credit-card me-2"></i>Transactions
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="payment_gateways.php">
-                        <i class="fas fa-money-check me-2"></i>Payment Gateways
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="customers_map.php">
-                        <i class="fas fa-map-marked-alt me-2"></i>Customer Map
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="settings.php">
-                        <i class="fas fa-cog me-2"></i>Settings
-                    </a>
-                </li>
-                <li class="nav-item mt-3">
-                    <a class="nav-link text-danger" href="#" onclick="logout()">
-                        <i class="fas fa-sign-out-alt me-2"></i>Logout
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <div class="container-fluid p-4">
-            <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Customers</h2>
-                <button class="btn btn-primary" onclick="showCreateModal()">
-                    <i class="fas fa-plus me-2"></i>Add Customer
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <input type="text" class="form-control" id="search-input" placeholder="Search customers...">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="status-filter">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="isolir">Isolir</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="terminated">Terminated</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="package-filter">
+                    <option value="">All Packages</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                    <i class="fas fa-times me-2"></i>Clear
                 </button>
             </div>
-
-            <!-- Filters -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <input type="text" class="form-control" id="search-input" placeholder="Search customers...">
-                        </div>
-                        <div class="col-md-2">
-                            <select class="form-select" id="status-filter">
-                                <option value="">All Status</option>
-                                <option value="active">Active</option>
-                                <option value="isolir">Isolir</option>
-                                <option value="suspended">Suspended</option>
-                                <option value="terminated">Terminated</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-outline-secondary" onclick="clearFilters()">
-                                <i class="fas fa-times me-2"></i>Clear
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Customers Table -->
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table id="customers-table" class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Code</th>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Phone</th>
-                                    <th>Package</th>
-                                    <th>Status</th>
-                                    <th>PPPoE User</th>
-                                    <th>Router</th>
-                                    <th>Created</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
+</div>
 
-    <!-- Create/Edit Customer Modal -->
-    <div class="modal fade" id="customerModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modal-title">Add Customer</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form id="customer-form">
-                    <div class="modal-body">
-                        <input type="hidden" id="customer-id" name="id">
-
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Name *</label>
-                                <input type="text" class="form-control" id="nama" name="nama" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control" id="email" name="email">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Phone</label>
-                                <input type="tel" class="form-control" id="telp" name="telp">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Package *</label>
-                                <input type="text" class="form-control" id="paket" name="paket" required>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Address</label>
-                                <textarea class="form-control" id="alamat" name="alamat" rows="3"></textarea>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">PPPoE Username</label>
-                                <input type="text" class="form-control" id="pppoe_user" name="pppoe_user">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">PPPoE Password</label>
-                                <input type="password" class="form-control" id="pppoe_pass" name="pppoe_pass">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Router</label>
-                                <select class="form-select" id="router_id" name="router_id">
-                                    <option value="">Select Router</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Status</label>
-                                <select class="form-select" id="status" name="status">
-                                    <option value="active">Active</option>
-                                    <option value="isolir">Isolir</option>
-                                    <option value="suspended">Suspended</option>
-                                    <option value="terminated">Terminated</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Profile Aktif</label>
-                                <input type="text" class="form-control" id="profile_aktif" name="profile_aktif" value="default">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Profile Isolir</label>
-                                <input type="text" class="form-control" id="profile_isolir" name="profile_isolir" value="ISOLIR">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="save-btn">
-                            <i class="fas fa-save me-2"></i>Save
-                        </button>
-                    </div>
-                </form>
-            </div>
+<!-- Customers Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="customers-table" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Package</th>
+                        <th>Status</th>
+                        <th>PPPoE User</th>
+                        <th>Router</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
     </div>
+</div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <!-- DataTables -->
-    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<!-- Modals -->
+<?php include '../templates/admin/customer_modals.php'; ?>
 
-    <script>
-        // CSRF token
-        const csrfToken = '<?php echo getCsrfToken(); ?>';
+<?php
+$page_specific_scripts = <<<'EOT'
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<!-- Leaflet Map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+    let customersTable;
+    let customerModal;
+    let whatsAppModal;
+    let currentWhatsAppCustomerId = null;
+    let customerMap = null;
+    let customerMarker = null;
 
-        $.ajaxSetup({
-            headers: { 'X-CSRF-Token': csrfToken }
+    $(document).ready(function() {
+        customerModal = new bootstrap.Modal(document.getElementById('customerModal'));
+        whatsAppModal = new bootstrap.Modal(document.getElementById('whatsAppModal'));
+        initializeTable();
+        loadRouters();
+        loadMitraDropdown();
+        setupEventListeners();
+        // Init map when customer modal is shown
+        $('#customerModal').on('shown.bs.modal', function(){
+            initCustomerMap();
+            syncMapFromFields();
         });
+    });
 
-        let customersTable;
-        let customerModal;
-
-        $(document).ready(function() {
-            customerModal = new bootstrap.Modal(document.getElementById('customerModal'));
-            initializeTable();
-            loadRouters();
-            setupEventListeners();
-        });
-
-        function initializeTable() {
-            customersTable = $('#customers-table').DataTable({
-                ajax: {
-                    url: '/api/admin/customers?action=list',
-                    data: function(d) {
-                        d.search = $('#search-input').val();
-                        d.status = $('#status-filter').val();
+    function initializeTable() {
+        customersTable = $('#customers-table').DataTable({
+            ajax: {
+                url: '/api/admin/customers?action=list',
+                dataSrc: 'data.customers',
+                data: function(d) {
+                    d.search = $('#search-input').val();
+                    d.status = $('#status-filter').val();
+                    d.package = $('#package-filter').val();
+                }
+            },
+            columns: [
+                { data: 'kode_pelanggan' },
+                { data: 'nama' },
+                { data: 'email' },
+                { data: 'telp' },
+                { data: 'paket' },
+                {
+                    data: 'status',
+                    render: function(data) {
+                        const badges = {
+                            'active': '<span class="badge bg-success">Active</span>',
+                            'isolir': '<span class="badge bg-danger">Isolir</span>',
+                            'suspended': '<span class="badge bg-warning">Suspended</span>',
+                            'terminated': '<span class="badge bg-secondary">Terminated</span>'
+                        };
+                        return badges[data] || data;
                     }
                 },
-                columns: [
-                    { data: 'kode_pelanggan' },
-                    { data: 'nama' },
-                    { data: 'email' },
-                    { data: 'telp' },
-                    { data: 'paket' },
-                    {
-                        data: 'status',
-                        render: function(data) {
-                            const badges = {
-                                'active': '<span class="badge bg-success">Active</span>',
-                                'isolir': '<span class="badge bg-danger">Isolir</span>',
-                                'suspended': '<span class="badge bg-warning">Suspended</span>',
-                                'terminated': '<span class="badge bg-secondary">Terminated</span>'
-                            };
-                            return badges[data] || data;
-                        }
-                    },
-                    { data: 'pppoe_user' },
-                    { data: 'router_name', defaultContent: '-' },
-                    {
-                        data: 'created_at',
-                        render: function(data) {
-                            return new Date(data).toLocaleDateString('id-ID');
-                        }
-                    },
-                    {
-                        data: null,
-                        orderable: false,
-                        render: function(data) {
-                            return `
-                                <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-primary" onclick="editCustomer(${data.id})">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-outline-danger" onclick="deleteCustomer(${data.id})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                    <button class="btn btn-outline-warning" onclick="toggleCustomerStatus(${data.id}, '${data.status}')">
-                                        <i class="fas fa-${data.status === 'active' ? 'ban' : 'check'}"></i>
-                                    </button>
-                                </div>
-                            `;
-                        }
+                { data: 'pppoe_user' },
+                { data: 'router_name', defaultContent: '-' },
+                {
+                    data: 'created_at',
+                    render: function(data) {
+                        return new Date(data).toLocaleDateString('id-ID');
                     }
-                ],
-                pageLength: 25,
-                responsive: true,
-                language: {
-                    emptyTable: "No customers found"
-                }
-            });
-        }
-
-        function loadRouters() {
-            $.get('/api/admin/mikrotik?action=routers')
-                .done(function(response) {
-                    if (response.success) {
-                        let options = '<option value="">Select Router</option>';
-                        response.routers.forEach(function(router) {
-                            options += `<option value="${router.id}">${router.name}</option>`;
-                        });
-                        $('#router_id').html(options);
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    render: function(data) {
+                        return `
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="editCustomer(${data.id})" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-danger" onclick="deleteCustomer(${data.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                                <button class="btn btn-outline-warning" onclick="toggleCustomerStatus(${data.id}, '${data.status}')" title="Toggle Status"><i class="fas fa-${data.status === 'active' ? 'ban' : 'check'}"></i></button>
+                                <button class="btn btn-outline-success" onclick="openWhatsAppModal(${data.id})" title="Send WhatsApp"><i class="fab fa-whatsapp"></i></button>
+                            </div>
+                        `;
                     }
-                });
-        }
-
-        function setupEventListeners() {
-            $('#search-input, #status-filter').on('input change', function() {
-                customersTable.ajax.reload();
-            });
-
-            $('#customer-form').on('submit', function(e) {
-                e.preventDefault();
-                saveCustomer();
-            });
-        }
-
-        function showCreateModal() {
-            $('#modal-title').text('Add Customer');
-            $('#customer-form')[0].reset();
-            $('#customer-id').val('');
-            customerModal.show();
-        }
-
-        function editCustomer(id) {
-            $.get(`/api/admin/customers?id=${id}`)
-                .done(function(response) {
-                    if (response.success && response.customer) {
-                        const customer = response.customer;
-                        $('#modal-title').text('Edit Customer');
-                        $('#customer-id').val(customer.id);
-                        $('#nama').val(customer.nama);
-                        $('#email').val(customer.email);
-                        $('#telp').val(customer.telp);
-                        $('#paket').val(customer.paket);
-                        $('#alamat').val(customer.alamat);
-                        $('#pppoe_user').val(customer.pppoe_user);
-                        $('#router_id').val(customer.router_id);
-                        $('#status').val(customer.status);
-                        $('#profile_aktif').val(customer.profile_aktif);
-                        $('#profile_isolir').val(customer.profile_isolir);
-                        customerModal.show();
-                    }
-                });
-        }
-
-        function saveCustomer() {
-            const formData = new FormData(document.getElementById('customer-form'));
-            const isEdit = formData.get('id') !== '';
-
-            $('#save-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
-
-            $.ajax({
-                url: '/api/admin/customers?action=' + (isEdit ? 'update' : 'create'),
-                method: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false
-            })
-            .done(function(response) {
-                if (response.success) {
-                    customerModal.hide();
-                    customersTable.ajax.reload();
-                    showAlert('Customer ' + (isEdit ? 'updated' : 'created') + ' successfully', 'success');
-                } else {
-                    showAlert(response.message || 'Error saving customer', 'danger');
                 }
-            })
-            .fail(function(xhr) {
-                const response = xhr.responseJSON;
-                showAlert(response?.message || 'Error saving customer', 'danger');
-            })
-            .always(function() {
-                $('#save-btn').prop('disabled', false).html('<i class="fas fa-save me-2"></i>Save');
+            ],
+            pageLength: 25,
+            responsive: true,
+            language: { emptyTable: "No customers found" }
+        });
+    }
+
+function loadRouters() {
+    // Routers for modal
+    $.get('/api/admin/mikrotik?action=routers').done(function(response) {
+        if (response.success) {
+            let options = '<option value="">Select Router</option>';
+            (response.data?.routers || []).forEach(router => options += `<option value="${router.id}">${router.name}</option>`);
+            $('#router_id').html(options);
+        }
+    });
+    // Packages for table filter
+    $.get('/api/admin/packages.php?action=list').done(function(data){
+        let options = '<option value="">All Packages</option>';
+        (data || []).forEach(pkg => options += `<option value="${pkg.name}">${pkg.name}</option>`);
+        $('#package-filter').html(options);
+    });
+}
+
+// Load packages for the modal form
+function loadPackagesForForm(selectedName = '') {
+    $.get('/api/admin/packages.php?action=list').done(function(data){
+        const sel = $('#paket');
+        const prev = selectedName || sel.val();
+        let opts = '<option value="">Select Package</option>';
+        (data || []).forEach(pkg => {
+            const text = `${pkg.name} (${pkg.speed})`;
+            const selected = (pkg.name === prev) ? 'selected' : '';
+            const profile = pkg.pppoe_profile || '';
+            opts += `<option value="${pkg.name}" data-profile="${profile}" ${selected}>${text}</option>`;
+        });
+        sel.html(opts);
+        const sopt = sel.find('option:selected');
+        const profile = sopt.data('profile');
+        if (profile) {
+            $('#profile_aktif').val(profile);
+        }
+    });
+}
+
+function loadMitraDropdown(selectedId = '') {
+    $.get('/api/admin/agents.php?action=list').done(function(data){
+        let options = '<option value="">Pilih Mitra</option>';
+        (data || []).forEach(m => {
+            const sel = (String(m.id) === String(selectedId)) ? 'selected' : '';
+            options += `<option value="${m.id}" ${sel}>${m.user_name} (rate ${m.commission_rate || 0}%)</option>`;
+        });
+        $('#mitra_id').html(options);
+    });
+}
+
+// Load PPP profiles for the modal form
+function loadProfilesForForm() {
+    $.get('/api/admin/mikrotik?action=pppoe_profiles').done(function(response){
+        if (!response.success) return;
+        const items = response.data?.profiles || response.profiles || response.data || [];
+        const activeSel = $('#profile_aktif');
+        const isolirSel = $('#profile_isolir');
+        const currentActive = activeSel.val();
+        const currentIsolir = isolirSel.val();
+        let options = '';
+        items.forEach(p => {
+            const name = p.name || p['name'] || p.profile || '';
+            if (!name) return;
+            options += `<option value="${name}">${name}</option>`;
+        });
+        if (options) {
+            const defaultActive = currentActive || 'default';
+            const defaultIsolir = currentIsolir || 'ISOLIR';
+            activeSel.html(options).val(defaultActive);
+            isolirSel.html(options).val(defaultIsolir);
+        }
+    });
+    // When package changes, adopt its pppoe_profile value into active profile
+    $(document).off('change.paketProfile').on('change.paketProfile', '#paket', function(){
+        const prof = $(this).find('option:selected').data('profile');
+        if (prof) $('#profile_aktif').val(prof);
+    });
+}
+
+function setupEventListeners() {
+        $('#search-input, #status-filter, #package-filter').on('input change', () => customersTable.ajax.reload());
+        $('#customer-form').on('submit', e => { e.preventDefault(); saveCustomer(); });
+        // Toggle show/hide PPPoE password
+        $(document).on('click', '#pppoe_toggle', function(){
+            const input = $('#pppoe_pass');
+            const isPwd = input.attr('type') === 'password';
+            input.attr('type', isPwd ? 'text' : 'password');
+            $(this).find('i').toggleClass('fa-eye fa-eye-slash');
+        });
+
+        // Enforce PPP requirements based on input
+        const enforcePPPRequirements = () => {
+            const isCreate = ($('#customer-id').val() || '') === '';
+            const hasUser = ($('#pppoe_user').val() || '').trim().length > 0;
+            $('#pppoe_pass').prop('required', isCreate && hasUser);
+            $('#router_id').prop('required', hasUser);
+        };
+        $(document).on('input change', '#pppoe_user, #customer-id, #router_id', enforcePPPRequirements);
+        enforcePPPRequirements();
+        // Map interactions
+        $(document).on('change', '#lat, #lon', () => syncMapFromFields());
+        $(document).on('click', '#btn-current-location', function(){
+            if (!navigator.geolocation) { alert('Geolocation tidak didukung browser ini.'); return; }
+            navigator.geolocation.getCurrentPosition(function(pos){
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                $('#lat').val(lat.toFixed(6));
+                $('#lon').val(lon.toFixed(6));
+                setMapView(lat, lon);
+            }, function(){
+                alert('Gagal mendapatkan lokasi saat ini.');
             });
-        }
-
-        function deleteCustomer(id) {
-            if (!confirm('Are you sure you want to delete this customer?')) return;
-
-            $.ajax({
-                url: `/api/admin/customers?action=delete&id=${id}`,
-                method: 'POST'
+        });
+        $('#wa-copy-message').on('click', function() {
+            const message = $('#wa-message').text().trim();
+            if (!message) return showWhatsAppAlert('No message to copy.', 'warning');
+            navigator.clipboard.writeText(message)
+                .then(() => showWhatsAppAlert('Message copied successfully.', 'success', 2000))
+                .catch(() => showWhatsAppAlert('Failed to copy message.', 'danger'));
+        });
+        $('#wa-open-link').on('click', () => { const link = $('#wa-link').val(); if(link) window.open(link, '_blank'); });
+        $('#wa-download-qr').on('click', function() {
+            const dataUrl = $(this).data('qr');
+            if (!dataUrl) return showWhatsAppAlert('QR not available.', 'warning');
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'whatsapp-qr.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+        $('#wa-queue').on('click', function() {
+            if (!currentWhatsAppCustomerId) return showWhatsAppAlert('Customer ID not found.', 'danger');
+            $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
+            $.post('/api/admin/whatsapp_notifications.php?action=queue_registration', JSON.stringify({ customer_id: currentWhatsAppCustomerId }), null, 'json')
+            .done(response => {
+                if (!response.success) throw new Error(response.message || 'Failed to add to queue');
+                showWhatsAppAlert('Registration message queued.', 'success');
             })
-            .done(function(response) {
-                if (response.success) {
-                    customersTable.ajax.reload();
-                    showAlert('Customer deleted successfully', 'success');
-                } else {
-                    showAlert(response.message || 'Error deleting customer', 'danger');
-                }
-            });
+            .fail(xhr => showWhatsAppAlert(xhr.responseJSON?.message || 'Server error.', 'danger'))
+            .always(() => $(this).prop('disabled', false).html('<i class="fas fa-paper-plane me-2"></i>Queue Sending'));
+    });
+    // Address search via Nominatim
+    let searchTimer = null;
+    $(document).on('input', '#address-search', function(){
+        clearTimeout(searchTimer);
+        const q = $(this).val().trim();
+        if (q.length < 3) { $('#search-results').empty(); return; }
+        searchTimer = setTimeout(() => doGeocode(q), 400);
+    });
+}
+
+// Geocoding helper
+function doGeocode(query) {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}&accept-language=id`;
+    fetch(url, { headers: { 'Accept': 'application/json' }})
+      .then(r => r.json())
+      .then(list => {
+        const $res = $('#search-results');
+        $res.empty();
+        (list || []).forEach(item => {
+            const name = item.display_name;
+            const lat = parseFloat(item.lat);
+            const lon = parseFloat(item.lon);
+            const a = $(`<a href="#" class="list-group-item list-group-item-action">${name}</a>`);
+            a.on('click', function(e){ e.preventDefault(); $('#lat').val(lat.toFixed(6)); $('#lon').val(lon.toFixed(6)); setMapView(lat, lon, 16); $('#address-search').val(name); $('#search-results').empty(); });
+            $res.append(a);
+        });
+      })
+      .catch(() => {});
+}
+
+function showCreateModal() {
+        $('#modal-title').text('Add Customer');
+        $('#customer-form')[0].reset();
+        $('#customer-id').val('');
+        customerModal.show();
+        // Re-evaluate PPP requirements in create mode
+        $('#pppoe_pass').prop('required', false);
+    // Set default map view
+    setTimeout(() => { initCustomerMap(); setMapView(-6.200000, 106.816666, 12); }, 100);
+    // Load dynamic selects
+    loadPackagesForForm('');
+    loadProfilesForForm();
+}
+
+    function openWhatsAppModal(customerId) {
+        if (!customerId) return;
+        resetWhatsAppModal();
+        currentWhatsAppCustomerId = customerId;
+        whatsAppModal.show();
+        $.post('/api/admin/whatsapp_notifications.php?action=preview', JSON.stringify({ type: 'registration', customer_id: customerId }), null, 'json')
+        .done(response => {
+            if (!response.success) return showWhatsAppAlert(response.message || 'Failed to create WhatsApp message.', 'danger');
+            renderWhatsAppPreview(response.data);
+        })
+        .fail(xhr => showWhatsAppAlert(xhr.responseJSON?.message || 'Server error.', 'danger'));
+    }
+
+    function resetWhatsAppModal() {
+        $('#whatsapp-alert').empty();
+        $('#wa-phone').text('-');
+        $('#wa-link').val('');
+        $('#wa-open-link').prop('disabled', true);
+        $('#wa-message').text('Loading message...');
+        $('#wa-qr').hide().attr('src', '');
+        $('#wa-qr-placeholder').show().text('QR will appear here');
+        $('#wa-download-qr').prop('disabled', true).removeData('qr');
+        $('#wa-queue').prop('disabled', false).html('<i class="fas fa-paper-plane me-2"></i>Queue Sending');
+        currentWhatsAppCustomerId = null;
+    }
+
+    function renderWhatsAppPreview(data) {
+        $('#wa-phone').text(data.phone || '-');
+        $('#wa-link').val(data.link || '');
+        $('#wa-message').text(data.message || '-');
+        $('#wa-open-link').prop('disabled', !data.link);
+        if (data.qr) {
+            $('#wa-qr').attr('src', data.qr).show();
+            $('#wa-qr-placeholder').hide();
+            $('#wa-download-qr').prop('disabled', false).data('qr', data.qr);
+        } else {
+            $('#wa-qr').hide();
+            $('#wa-qr-placeholder').show().text('QR not available');
+            $('#wa-download-qr').prop('disabled', true).removeData('qr');
         }
+    }
 
-        function toggleCustomerStatus(id, currentStatus) {
-            const action = currentStatus === 'active' ? 'isolir' : 'activate';
-            const confirmMsg = `Are you sure you want to ${action} this customer?`;
+    function showWhatsAppAlert(message, type = 'info', timeout = 4000) {
+        const alert = $(`<div class="alert alert-${type} alert-dismissible fade show" role="alert">${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`);
+        $('#whatsapp-alert').append(alert);
+        if (timeout > 0) setTimeout(() => alert.alert('close'), timeout);
+    }
 
-            if (!confirm(confirmMsg)) return;
-
-            $.ajax({
-                url: `/api/admin/customers?action=${action}&id=${id}`,
-                method: 'POST'
-            })
-            .done(function(response) {
-                if (response.success) {
-                    customersTable.ajax.reload();
-                    showAlert(`Customer ${action}d successfully`, 'success');
-                } else {
-                    showAlert(response.message || `Error ${action}ing customer`, 'danger');
-                }
-            });
-        }
-
-        function clearFilters() {
-            $('#search-input').val('');
-            $('#status-filter').val('');
-            customersTable.ajax.reload();
-        }
-
-        function showAlert(message, type) {
-            // Simple alert - you can enhance this with a proper notification system
-            alert(message);
-        }
-
-        function logout() {
-            if (confirm('Are you sure you want to logout?')) {
-                $.post('/api/public/logout')
-                    .done(function() {
-                        window.location.href = '/';
-                    });
+    function editCustomer(id) {
+        $.get(`/api/admin/customers?action=get&id=${id}`).done(response => {
+            if (response.success && response.data?.customer) {
+                const cust = response.data.customer;
+                $('#modal-title').text('Edit Customer');
+                $('#customer-id').val(cust.id);
+                $('#nama').val(cust.nama);
+                $('#email').val(cust.email);
+                $('#telp').val(cust.telp);
+                $('#paket').val(cust.paket);
+                $('#alamat').val(cust.alamat);
+                $('#lat').val(cust.lat || '');
+                $('#lon').val(cust.lon || '');
+                $('#pppoe_user').val(cust.pppoe_user);
+            $('#router_id').val(cust.router_id);
+            $('#status').val(cust.status);
+            $('#profile_aktif').val(cust.profile_aktif);
+            $('#profile_isolir').val(cust.profile_isolir);
+            // Mitra mapping (if available)
+            if (cust.mitra_id) {
+                loadMitraDropdown(cust.mitra_id);
+                $('#mitra_region').val(cust.mitra_region || '');
+                $('#mitra_share').val(cust.mitra_share || '');
+            } else {
+                loadMitraDropdown('');
+                $('#mitra_region').val('');
+                $('#mitra_share').val('');
             }
+            customerModal.show();
+                setTimeout(() => { initCustomerMap(); syncMapFromFields(); }, 150);
+                // Load and keep selections
+                loadPackagesForForm(cust.paket || '');
+                loadProfilesForForm();
+            }
+        });
+    }
+
+    function saveCustomer() {
+        const form = document.getElementById('customer-form');
+        const formData = new FormData(form);
+        const isEdit = formData.get('id') !== '';
+        $('#save-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
+        // Trigger native validation and abort if invalid
+        if (!form.reportValidity()) {
+            $('#save-btn').prop('disabled', false).html('<i class="fas fa-save me-2"></i>Save');
+            return;
         }
-    </script>
-</body>
-</html>
+        $.ajax({ url: '/api/admin/customers?action=' + (isEdit ? 'update' : 'create'), method: 'POST', data: formData, processData: false, contentType: false })
+        .done(response => {
+            if (response.success) {
+                customerModal.hide();
+                customersTable.ajax.reload();
+                alert('Customer ' + (isEdit ? 'updated' : 'created') + ' successfully');
+            } else {
+                alert(response.message || 'Error saving customer');
+            }
+        })
+        .fail(xhr => alert(xhr.responseJSON?.message || 'Error saving customer'))
+        .always(() => $('#save-btn').prop('disabled', false).html('<i class="fas fa-save me-2"></i>Save'));
+    }
+
+    function deleteCustomer(id) {
+        if (!confirm('Are you sure?')) return;
+        $.post(`/api/admin/customers?action=delete&id=${id}`)
+        .done(response => {
+            if (response.success) {
+                customersTable.ajax.reload();
+                alert('Customer deleted');
+            } else {
+                alert(response.message || 'Error deleting customer');
+            }
+        });
+    }
+
+    function toggleCustomerStatus(id, currentStatus) {
+        const action = currentStatus === 'active' ? 'isolir' : 'activate';
+        if (!confirm(`Are you sure you want to ${action} this customer?`)) return;
+        $.post(`/api/admin/customers?action=${action}&id=${id}`)
+        .done(response => {
+            if (response.success) {
+                customersTable.ajax.reload();
+                alert(`Customer ${action}d successfully`);
+            } else {
+                alert(response.message || `Error ${action}ing customer`);
+            }
+        });
+    }
+
+    function clearFilters() {
+        $('#search-input').val('');
+        $('#status-filter').val('');
+        $('#package-filter').val('');
+        customersTable.ajax.reload();
+    }
+
+    // Map helpers
+    function initCustomerMap() {
+        const mapEl = document.getElementById('customer-map');
+        if (!mapEl) return;
+        if (!customerMap) {
+            customerMap = L.map('customer-map');
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(customerMap);
+            customerMap.on('click', function(e) {
+                const { lat, lng } = e.latlng;
+                $('#lat').val(lat.toFixed(6));
+                $('#lon').val(lng.toFixed(6));
+                setMarker(lat, lng);
+            });
+        }
+        setTimeout(() => customerMap.invalidateSize(), 120);
+    }
+
+    function setMarker(lat, lon) {
+        if (!customerMap) return;
+        if (customerMarker) {
+            customerMarker.setLatLng([lat, lon]);
+        } else {
+            customerMarker = L.marker([lat, lon], { draggable: true }).addTo(customerMap);
+            customerMarker.on('dragend', function(){
+                const ll = customerMarker.getLatLng();
+                $('#lat').val(ll.lat.toFixed(6));
+                $('#lon').val(ll.lng.toFixed(6));
+            });
+        }
+    }
+
+    function setMapView(lat, lon, zoom = 14) {
+        if (!customerMap) return;
+        customerMap.setView([lat, lon], zoom);
+        setMarker(lat, lon);
+    }
+
+    function syncMapFromFields() {
+        const lat = parseFloat($('#lat').val());
+        const lon = parseFloat($('#lon').val());
+        if (!isNaN(lat) && !isNaN(lon)) {
+            setMapView(lat, lon);
+        } else {
+            setMapView(-6.200000, 106.816666, 12);
+        }
+    }
+</script>
+EOT;
+
+require_once __DIR__ . '/../includes/admin_footer.php';
+?>

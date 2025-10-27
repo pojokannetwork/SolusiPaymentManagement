@@ -1,112 +1,23 @@
 <?php
-// SolusiPaymentManagement Admin Portal Settings
-
-require_once __DIR__ . '/../includes/bootstrap.php';
-
-// Check authentication and permissions
-$guard = RouterGuard::getInstance();
+$page_title = 'Portal Settings';
+require_once __DIR__ . '/../includes/admin_header.php';
+// Ensure permission after header for consistency
 $guard->requirePermission('admin.settings');
 
-$user = getCurrentUser();
-
 // Get current portal settings
-global $db;
-$settings = $db->fetchOne("SELECT * FROM settings WHERE setting_key = 'portal_config'");
-$config = $settings ? json_decode($settings['setting_value'], true) : [];
+$configJson = getSetting('portal_config');
+$config = $configJson ? json_decode($configJson, true) : [];
+if (is_array($config)) {
+    array_walk_recursive($config, function (&$value) {
+        if (is_string($value)) {
+            $value = htmlspecialchars_decode($value, ENT_QUOTES);
+        }
+    });
+}
+$primaryColor = htmlspecialchars($config['primary_color'] ?? '#2563eb', ENT_QUOTES, 'UTF-8');
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Settings - SolusiPaymentManagement</title>
 
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome 6 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <style>
-        .sidebar { min-height: 100vh; background: #343a40; }
-        .sidebar .nav-link { color: rgba(255,255,255,.75); }
-        .sidebar .nav-link:hover { color: #fff; }
-        .sidebar .nav-link.active { color: #fff; background: #0d6efd; }
-        .main-content { margin-left: 0; }
-        @media (min-width: 768px) { .main-content { margin-left: 250px; } }
-        
-        .preview-card {
-            border: 2px dashed #dee2e6;
-            border-radius: 10px;
-            padding: 2rem;
-            background: #f8f9fa;
-        }
-        
-        .logo-preview {
-            max-width: 200px;
-            max-height: 200px;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 10px;
-            background: white;
-        }
-    </style>
-</head>
-<body>
-    <!-- Sidebar -->
-    <nav class="sidebar position-fixed" style="width: 250px;">
-        <div class="p-3">
-            <h5 class="text-white mb-4">
-                <i class="fas fa-cogs me-2"></i>
-                SolusiPaymentManagement
-            </h5>
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php">
-                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="customers.php">
-                        <i class="fas fa-users me-2"></i>Customers
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="invoices.php">
-                        <i class="fas fa-file-invoice me-2"></i>Invoices
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="payment_gateways.php">
-                        <i class="fas fa-money-check me-2"></i>Payment Gateways
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="customers_map.php">
-                        <i class="fas fa-map-marked-alt me-2"></i>Customer Map
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="settings.php">
-                        <i class="fas fa-cog me-2"></i>Settings
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="portal_settings.php">
-                        <i class="fas fa-palette me-2"></i>Portal Settings
-                    </a>
-                </li>
-                <li class="nav-item mt-3">
-                    <a class="nav-link text-danger" href="#" onclick="logout()">
-                        <i class="fas fa-sign-out-alt me-2"></i>Logout
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <div class="container-fluid p-4">
+        <div class="p-4">
             <!-- Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
@@ -128,6 +39,19 @@ $config = $settings ? json_decode($settings['setting_value'], true) : [];
                         <div class="card-body">
                             <form id="portalSettingsForm" enctype="multipart/form-data">
                                 <input type="hidden" name="csrf_token" id="csrf_token" value="<?php echo getCsrfToken(); ?>">
+                                
+                                <!-- Language -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">
+                                        <i class="fas fa-language me-2"></i>Language
+                                    </label>
+                                    <?php $currentLang = getSetting('language', 'id'); ?>
+                                    <select class="form-select" id="language" name="language">
+                                        <option value="id" <?php echo $currentLang === 'id' ? 'selected' : ''; ?>>Bahasa Indonesia</option>
+                                        <option value="en" <?php echo $currentLang === 'en' ? 'selected' : ''; ?>>English</option>
+                                    </select>
+                                    <small class="text-muted">Pilih bahasa antarmuka portal dan admin.</small>
+                                </div>
                                 
                                 <!-- Company Logo -->
                                 <div class="mb-4">
@@ -215,9 +139,9 @@ $config = $settings ? json_decode($settings['setting_value'], true) : [];
                                     </label>
                                     <div class="input-group">
                                         <input type="color" class="form-control form-control-color" id="primary_color" name="primary_color" 
-                                               value="<?php echo $config['primary_color'] ?? '#2563eb'; ?>">
+                                               value="<?php echo $primaryColor; ?>">
                                         <input type="text" class="form-control" id="primary_color_text" 
-                                               value="<?php echo $config['primary_color'] ?? '#2563eb'; ?>" readonly>
+                                               value="<?php echo $primaryColor; ?>" readonly>
                                     </div>
                                     <small class="text-muted">Warna utama untuk gradient background dan buttons</small>
                                 </div>
@@ -254,7 +178,7 @@ $config = $settings ? json_decode($settings['setting_value'], true) : [];
                                 <p class="text-muted" id="previewTagline"><?php echo htmlspecialchars($config['tagline'] ?? 'Sistem Manajemen Pembayaran & ISP Terdepan'); ?></p>
                                 <p class="small" id="previewDescription"><?php echo htmlspecialchars($config['description'] ?? 'Platform terintegrasi untuk manajemen pelanggan, pembayaran, dan operasional ISP.'); ?></p>
                                 
-                                <div class="mt-3 p-3 rounded" id="previewColor" style="background: linear-gradient(135deg, <?php echo $config['primary_color'] ?? '#2563eb'; ?>, <?php echo $config['primary_color'] ?? '#2563eb'; ?>);">
+                                <div class="mt-3 p-3 rounded" id="previewColor" style="background: linear-gradient(135deg, <?php echo $primaryColor; ?>, <?php echo $primaryColor; ?>);">
                                     <span class="text-white fw-bold">Color Preview</span>
                                 </div>
                             </div>
@@ -270,12 +194,8 @@ $config = $settings ? json_decode($settings['setting_value'], true) : [];
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-
-    <script>
+<?php $page_specific_scripts = <<<'EOT'
+<script>
         // Live Preview Updates
         $('#title').on('input', function() {
             $('#previewTitle').text($(this).val());
@@ -371,6 +291,19 @@ $config = $settings ? json_decode($settings['setting_value'], true) : [];
                     });
             }
         }
-    </script>
-</body>
-</html>
+// Add responsive helpers for any tables/cards/buttons in this page
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('table').forEach(table => {
+        if (!table.closest('.table-responsive')) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'table-responsive';
+            table.parentNode.insertBefore(wrapper, table);
+            wrapper.appendChild(table);
+        }
+        table.classList.add('table-mobile');
+    });
+});
+</script>
+EOT;
+?>
+<?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>

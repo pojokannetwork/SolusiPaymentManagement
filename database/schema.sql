@@ -368,7 +368,334 @@ INSERT INTO settings (`key`, value) VALUES
 ('profile_isolir', 'ISOLIR'),
 ('source_of_truth', 'radius');
 
+-- ISP Packages
+CREATE TABLE isp_packages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(150) NOT NULL,
+    speed VARCHAR(100) NOT NULL,
+    price DECIMAL(12,2) NOT NULL,
+    tax_rate DECIMAL(5,2) DEFAULT 11.00,
+    description TEXT,
+    pppoe_profile VARCHAR(100),
+    is_active TINYINT(1) DEFAULT 1,
+    status ENUM('active','inactive') DEFAULT 'active',
+    image_path VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_status (status),
+    INDEX idx_is_active (is_active)
+);
+
+-- Voucher pricing and generation tables
+CREATE TABLE isp_voucher_pricing (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    package_id INT NOT NULL,
+    duration_hours INT NOT NULL,
+    price DECIMAL(12,2) NOT NULL,
+    agent_price DECIMAL(12,2) DEFAULT 0,
+    commission DECIMAL(12,2) DEFAULT 0,
+    hotspot_profile VARCHAR(100),
+    status ENUM('active','inactive') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_package_duration (package_id, duration_hours),
+    FOREIGN KEY (package_id) REFERENCES isp_packages(id) ON DELETE CASCADE
+);
+
+CREATE TABLE isp_voucher_generation_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    setting_key VARCHAR(100) NOT NULL UNIQUE,
+    setting_value TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE isp_voucher_online_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    package_code VARCHAR(50) NOT NULL UNIQUE,
+    profile VARCHAR(100) NOT NULL,
+    enabled TINYINT(1) DEFAULT 1,
+    display_name VARCHAR(150),
+    description TEXT,
+    price DECIMAL(12,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (package_code) REFERENCES isp_packages(code) ON DELETE CASCADE
+);
+
+CREATE TABLE isp_voucher_purchases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_name VARCHAR(150) NOT NULL,
+    customer_phone VARCHAR(30) NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    description TEXT,
+    purchase_type ENUM('voucher','manual') DEFAULT 'voucher',
+    voucher_package VARCHAR(50) NOT NULL,
+    voucher_quantity INT DEFAULT 1,
+    voucher_profile VARCHAR(100) NOT NULL,
+    voucher_payload JSON,
+    status ENUM('pending','completed','failed','cancelled') DEFAULT 'pending',
+    payment_gateway VARCHAR(100),
+    payment_transaction_id VARCHAR(100),
+    payment_url VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_voucher_phone (customer_phone),
+    INDEX idx_voucher_status (status),
+    INDEX idx_voucher_package (voucher_package)
+);
+
+CREATE TABLE isp_voucher_delivery_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    voucher_purchase_id INT NOT NULL,
+    delivery_channel ENUM('whatsapp','email','sms','manual') DEFAULT 'whatsapp',
+    recipient VARCHAR(150) NOT NULL,
+    status ENUM('pending','sent','failed') DEFAULT 'pending',
+    response_message TEXT,
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMP NULL,
+    FOREIGN KEY (voucher_purchase_id) REFERENCES isp_voucher_purchases(id) ON DELETE CASCADE,
+    INDEX idx_voucher_delivery_status (status)
+);
+
+-- Extend customers with package metadata
+ALTER TABLE pelanggan
+    ADD COLUMN package_id INT NULL AFTER paket,
+    ADD COLUMN billing_day TINYINT DEFAULT 15,
+    ADD COLUMN auto_suspension TINYINT(1) DEFAULT 1,
+    ADD COLUMN cable_type VARCHAR(100) NULL,
+    ADD COLUMN cable_length DECIMAL(10,2) NULL,
+    ADD COLUMN port_number INT NULL,
+    ADD COLUMN cable_status ENUM('connected','disconnected','maintenance','damaged') DEFAULT 'connected',
+    ADD COLUMN cable_notes TEXT NULL,
+    ADD COLUMN mac_address VARCHAR(50) NULL,
+  ADD COLUMN assigned_ip VARCHAR(45) NULL,
+  ADD CONSTRAINT fk_pelanggan_package FOREIGN KEY (package_id) REFERENCES isp_packages(id);
+
+
 -- Insert default roles
+
+-- Warehouse / Inventory tables
+CREATE TABLE IF NOT EXISTS inventory_categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(150) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_name (name)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_locations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(150) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_name (name)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(200) NOT NULL,
+    category_id INT NULL,
+    unit VARCHAR(20) DEFAULT 'pcs',
+    stock_qty DECIMAL(15,3) DEFAULT 0,
+    location_id INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES inventory_categories(id) ON DELETE SET NULL,
+    FOREIGN KEY (location_id) REFERENCES inventory_locations(id) ON DELETE SET NULL,
+    INDEX idx_name (name),
+    INDEX idx_category (category_id),
+    INDEX idx_location (location_id)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_receipts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    doc_no VARCHAR(50) NOT NULL UNIQUE,
+    date DATE NOT NULL,
+    supplier VARCHAR(200),
+    status ENUM('Draft','Posted','Cancelled') DEFAULT 'Draft',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_date (date),
+    INDEX idx_status (status)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_receipt_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    receipt_id INT NOT NULL,
+    item_id INT NOT NULL,
+    qty DECIMAL(15,3) NOT NULL,
+    unit VARCHAR(20) DEFAULT 'pcs',
+    note VARCHAR(255),
+    FOREIGN KEY (receipt_id) REFERENCES inventory_receipts(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES inventory_items(id) ON DELETE RESTRICT,
+    INDEX idx_receipt (receipt_id),
+    INDEX idx_item (item_id)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_issues (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    doc_no VARCHAR(50) NOT NULL UNIQUE,
+    date DATE NOT NULL,
+    target VARCHAR(200),
+    status ENUM('Draft','Posted','Cancelled') DEFAULT 'Draft',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_date (date),
+    INDEX idx_status (status)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_issue_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    issue_id INT NOT NULL,
+    item_id INT NOT NULL,
+    qty DECIMAL(15,3) NOT NULL,
+    unit VARCHAR(20) DEFAULT 'pcs',
+    note VARCHAR(255),
+    FOREIGN KEY (issue_id) REFERENCES inventory_issues(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES inventory_items(id) ON DELETE RESTRICT,
+    INDEX idx_issue (issue_id),
+    INDEX idx_item (item_id)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_adjustments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    doc_no VARCHAR(50) NOT NULL UNIQUE,
+    date DATE NOT NULL,
+    item_id INT NOT NULL,
+    change_qty DECIMAL(15,3) NOT NULL,
+    note VARCHAR(255),
+    status ENUM('Draft','Posted','Cancelled') DEFAULT 'Draft',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (item_id) REFERENCES inventory_items(id) ON DELETE RESTRICT,
+    INDEX idx_date (date),
+    INDEX idx_status (status)
+);
+
+-- Agent System
+CREATE TABLE isp_agents (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    parent_agent_id INT NULL,
+    balance DECIMAL(12,2) DEFAULT 0,
+    commission_rate DECIMAL(5,2) DEFAULT 0,
+    status ENUM('active','inactive','suspended') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_agent_id) REFERENCES isp_agents(id) ON DELETE SET NULL,
+    INDEX idx_agent_status (status)
+);
+
+CREATE TABLE isp_agent_balance_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    agent_id INT NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    status ENUM('pending','approved','rejected') DEFAULT 'pending',
+    notes TEXT,
+    processed_by INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (agent_id) REFERENCES isp_agents(id) ON DELETE CASCADE,
+    FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- ODP/ONU Network Infrastructure
+CREATE TABLE isp_odp (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(150) NOT NULL,
+    address TEXT,
+    latitude DECIMAL(10,8),
+    longitude DECIMAL(11,8),
+    total_ports INT NOT NULL,
+    available_ports INT NOT NULL,
+    status ENUM('active','inactive','full','maintenance') DEFAULT 'active',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_odp_status (status)
+);
+
+CREATE TABLE isp_onu_devices (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    serial_number VARCHAR(100) NOT NULL UNIQUE,
+    model VARCHAR(100),
+    status ENUM('available','in_use','defective','maintenance') DEFAULT 'available',
+    customer_id INT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES pelanggan(id) ON DELETE SET NULL,
+    INDEX idx_onu_status (status)
+);
+
+CREATE TABLE isp_odp_connections (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    odp_id INT NOT NULL,
+    customer_id INT NOT NULL,
+    port_number INT NOT NULL,
+    onu_id INT NULL,
+    cable_type VARCHAR(100),
+    cable_length DECIMAL(10,2),
+    status ENUM('connected','disconnected','maintenance') DEFAULT 'connected',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_odp_port (odp_id, port_number),
+    FOREIGN KEY (odp_id) REFERENCES isp_odp(id) ON DELETE CASCADE,
+    FOREIGN KEY (customer_id) REFERENCES pelanggan(id) ON DELETE CASCADE,
+    FOREIGN KEY (onu_id) REFERENCES isp_onu_devices(id) ON DELETE SET NULL
+);
+
+-- Financials
+CREATE TABLE isp_expenses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    category VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    expense_date DATE NOT NULL,
+    created_by INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE isp_monthly_summary (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    month INT NOT NULL,
+    year INT NOT NULL,
+    total_revenue DECIMAL(15,2) NOT NULL,
+    total_expenses DECIMAL(15,2) NOT NULL,
+    net_income DECIMAL(15,2) NOT NULL,
+    active_customers INT NOT NULL,
+    new_customers INT NOT NULL,
+    churned_customers INT NOT NULL,
+    total_invoices INT NOT NULL,
+    paid_invoices INT NOT NULL,
+    unpaid_invoices INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_month_year (month, year)
+);
+
+
+-- Extend customers with ODP/ONU details
+ALTER TABLE pelanggan
+    ADD COLUMN odp_id INT NULL AFTER assigned_ip,
+    ADD COLUMN onu_id INT NULL AFTER odp_id,
+    ADD CONSTRAINT fk_pelanggan_odp FOREIGN KEY (odp_id) REFERENCES isp_odp(id),
+    ADD CONSTRAINT fk_pelanggan_onu FOREIGN KEY (onu_id) REFERENCES isp_onu_devices(id);
+
 INSERT INTO peran (nama, deskripsi) VALUES
 ('admin', 'Administrator with full access'),
 ('employee', 'Employee with limited access'),
@@ -393,6 +720,11 @@ INSERT INTO izin (kode, deskripsi) VALUES
 ('admin.noc_assistant', 'Access NOC assistant'),
 ('admin.call_center', 'Access call center'),
 ('admin.customers_map', 'View customers map'),
+('admin.packages', 'Manage ISP Packages'),
+('admin.vouchers', 'Manage ISP Vouchers'),
+('admin.agents', 'Manage ISP Agents'),
+('admin.odp', 'Manage ODP'),
+('admin.onu', 'Manage ONU'),
 ('admin.settings', 'System settings'),
 ('employee.dashboard', 'Access employee dashboard'),
 ('employee.attendance', 'Manage attendance'),

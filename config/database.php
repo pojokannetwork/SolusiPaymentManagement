@@ -1,12 +1,12 @@
 <?php
 // SolusiPaymentManagement Database Configuration
 
-// Main application database - Using SQLite for demo
-define('DB_HOST', 'sqlite:' . __DIR__ . '/../solusipaymentmanagement.db');
-define('DB_NAME', '');
-define('DB_USER', '');
+// Main application database - Using MySQL
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'solusipaymentmanagement');
+define('DB_USER', 'root');
 define('DB_PASS', '');
-define('DB_CHARSET', '');
+define('DB_CHARSET', 'utf8mb4');
 
 // RADIUS database (separate from main app DB)
 define('RADIUS_DB_HOST', 'localhost');

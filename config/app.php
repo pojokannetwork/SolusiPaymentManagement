@@ -3,8 +3,8 @@
 
 define('APP_NAME', 'SolusiPaymentManagement');
 define('APP_VERSION', '1.0.0');
-define('APP_ENV', 'development'); // production, staging, development
-define('APP_URL', 'http://localhost:8000'); // Change in production
+define('APP_ENV', 'production'); // production, staging, development
+define('APP_URL', 'http://localhost:8888'); // Change in production
 define('APP_TIMEZONE', 'Asia/Jakarta');
 
 // Security settings
