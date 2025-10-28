@@ -52,11 +52,8 @@ require_once __DIR__ . '/whatsapp_notifications.php';
 require_once __DIR__ . '/whatsapp_queue.php';
 require_once __DIR__ . '/fiber_management.php';
 
-// Include payment gateway adapters
-require_once __DIR__ . '/pg_adapter/PgAdapter.php';
-require_once __DIR__ . '/pg_adapter/Midtrans.php';
-require_once __DIR__ . '/pg_adapter/Xendit.php';
-// Other adapters can be included as needed
+// Include payment gateway factory and adapters
+require_once __DIR__ . '/PaymentGatewayFactory.php';
 
 // Create uploads directory if it doesn't exist
 if (!is_dir(UPLOAD_PATH)) {
