@@ -67,6 +67,9 @@ $can = function($perm){
             <?php if ($can('admin.transactions')): ?><li><a class="nav-link<?php echo is_active('transactions.php'); ?>" href="/admin/transactions.php">
                 <i class="fas fa-exchange-alt me-2"></i>Transactions
             </a></li><?php endif; ?>
+            <?php if ($can('admin.customers')): ?><li><a class="nav-link<?php echo is_active('billing_monitor.php'); ?>" href="/admin/billing_monitor.php">
+                <i class="fas fa-calendar-check me-2"></i>Billing Monitor
+            </a></li><?php endif; ?>
             <?php if ($can('admin.payment_gateways')): ?><li><a class="nav-link<?php echo is_active('payment_gateways.php'); ?>" href="/admin/payment_gateways.php">
                 <i class="fas fa-money-check me-2"></i>Payment Gateways
             </a></li><?php endif; ?>

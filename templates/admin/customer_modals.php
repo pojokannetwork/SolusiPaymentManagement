@@ -113,6 +113,68 @@
                                 <option value="terminated">Terminated</option>
                             </select>
                         </div>
+                        
+                        <!-- Billing System Fields -->
+                        <div class="col-12 mt-4">
+                            <h6 class="text-primary"><i class="fas fa-credit-card me-2"></i>Billing System</h6>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Sistem Pembayaran *</label>
+                            <select class="form-select" id="sistem_bayar" name="sistem_bayar" required>
+                                <option value="postpaid">Pasca Bayar (Postpaid)</option>
+                                <option value="prepaid">Pra Bayar (Prepaid)</option>
+                            </select>
+                            <div class="form-text">
+                                <small>
+                                    <strong>Postpaid:</strong> Bayar di akhir periode (tagihan bulanan)<br>
+                                    <strong>Prepaid:</strong> Bayar di awal periode (voucher/token)
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Tanggal Aktif</label>
+                            <input type="date" class="form-control" id="tanggal_aktif" name="tanggal_aktif">
+                            <div class="form-text">Tanggal mulai aktif layanan. Kosongkan untuk hari ini.</div>
+                        </div>
+                        
+                        <div class="col-md-6" id="postpaid-fields">
+                            <label class="form-label">Siklus Tagihan</label>
+                            <select class="form-select" id="cycle_billing" name="cycle_billing">
+                                <option value="1">Tanggal 1 setiap bulan</option>
+                                <option value="2">Tanggal 2 setiap bulan</option>
+                                <option value="3">Tanggal 3 setiap bulan</option>
+                                <option value="5">Tanggal 5 setiap bulan</option>
+                                <option value="10">Tanggal 10 setiap bulan</option>
+                                <option value="15">Tanggal 15 setiap bulan</option>
+                                <option value="20">Tanggal 20 setiap bulan</option>
+                                <option value="25">Tanggal 25 setiap bulan</option>
+                            </select>
+                            <div class="form-text">Tanggal generate tagihan bulanan</div>
+                        </div>
+                        
+                        <div class="col-md-6" id="isolir-fields">
+                            <label class="form-label">Tanggal Isolir</label>
+                            <input type="date" class="form-control" id="tanggal_isolir" name="tanggal_isolir">
+                            <div class="form-text">Tanggal isolir otomatis jika belum bayar. Kosongkan untuk auto-calculate.</div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Grace Period (Hari)</label>
+                            <input type="number" class="form-control" id="grace_period" name="grace_period" min="0" max="30" value="7">
+                            <div class="form-text">Masa tenggang sebelum isolir (0-30 hari)</div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="auto_isolir" name="auto_isolir" checked>
+                                <label class="form-check-label" for="auto_isolir">
+                                    <strong>Auto Isolir</strong>
+                                </label>
+                                <div class="form-text">Isolir otomatis jika lewat tanggal isolir</div>
+                            </div>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label">Profile Aktif</label>
                             <select class="form-select" id="profile_aktif" name="profile_aktif">

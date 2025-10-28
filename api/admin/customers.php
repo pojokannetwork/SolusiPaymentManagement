@@ -118,7 +118,33 @@ function handleCreate() {
         $data['pppoe_pass_enc'] = encryptData($data['pppoe_pass']);
     }
 
-    $fields = ['kode_pelanggan', 'nama', 'email', 'telp', 'alamat', 'lat', 'lon', 'paket', 'status', 'router_id', 'pppoe_user', 'pppoe_pass_enc', 'profile_aktif', 'profile_isolir'];
+    // Set billing system defaults
+    if (empty($data['sistem_bayar'])) {
+        $data['sistem_bayar'] = 'postpaid';
+    }
+    if (empty($data['tanggal_aktif'])) {
+        $data['tanggal_aktif'] = date('Y-m-d');
+    }
+    if (empty($data['cycle_billing'])) {
+        $data['cycle_billing'] = 1;
+    }
+    if (empty($data['grace_period'])) {
+        $data['grace_period'] = 7;
+    }
+    if (!isset($data['auto_isolir'])) {
+        $data['auto_isolir'] = 1;
+    }
+    
+    // Auto-calculate tanggal_isolir if not set and postpaid
+    if (empty($data['tanggal_isolir']) && $data['sistem_bayar'] === 'postpaid') {
+        $data['tanggal_isolir'] = calculateTanggalIsolir(
+            $data['tanggal_aktif'], 
+            $data['cycle_billing'], 
+            $data['grace_period']
+        );
+    }
+
+    $fields = ['kode_pelanggan', 'nama', 'email', 'telp', 'alamat', 'lat', 'lon', 'paket', 'status', 'router_id', 'pppoe_user', 'pppoe_pass_enc', 'profile_aktif', 'profile_isolir', 'tanggal_aktif', 'sistem_bayar', 'tanggal_isolir', 'cycle_billing', 'auto_isolir', 'grace_period'];
     $insertData = [];
     foreach ($fields as $field) {
         $insertData[$field] = $data[$field] ?? null;
@@ -209,7 +235,22 @@ function handleUpdate() {
         $data['pppoe_pass_enc'] = encryptData($data['pppoe_pass']);
     }
 
-    $fields = ['nama', 'email', 'telp', 'alamat', 'lat', 'lon', 'paket', 'status', 'router_id', 'pppoe_user', 'pppoe_pass_enc', 'profile_aktif', 'profile_isolir'];
+    // Auto-calculate tanggal_isolir if billing fields changed and postpaid
+    if (isset($data['sistem_bayar']) && $data['sistem_bayar'] === 'postpaid' && 
+        (isset($data['tanggal_aktif']) || isset($data['cycle_billing']) || isset($data['grace_period']))) {
+        
+        // Get current customer data to fill missing values
+        $current = $db->fetchOne("SELECT * FROM pelanggan WHERE id = ?", [$id]);
+        $tanggal_aktif = $data['tanggal_aktif'] ?? $current['tanggal_aktif'];
+        $cycle_billing = $data['cycle_billing'] ?? $current['cycle_billing'] ?? 1;
+        $grace_period = $data['grace_period'] ?? $current['grace_period'] ?? 7;
+        
+        if (!isset($data['tanggal_isolir']) && $tanggal_aktif) {
+            $data['tanggal_isolir'] = calculateTanggalIsolir($tanggal_aktif, $cycle_billing, $grace_period);
+        }
+    }
+
+    $fields = ['nama', 'email', 'telp', 'alamat', 'lat', 'lon', 'paket', 'status', 'router_id', 'pppoe_user', 'pppoe_pass_enc', 'profile_aktif', 'profile_isolir', 'tanggal_aktif', 'sistem_bayar', 'tanggal_isolir', 'cycle_billing', 'auto_isolir', 'grace_period'];
     $setClauses = [];
     $params = [];
     foreach ($fields as $field) {
@@ -431,4 +472,26 @@ function parseSpeedToRateLimit($speed) {
     // Round to integer if >=1, else keep one decimal
     $fmt = ($mval >= 1) ? (string)round($mval) : number_format($mval, 1);
     return $fmt . 'M/' . $fmt . 'M';
+}
+
+// Billing System Helper Functions
+function calculateTanggalIsolir($tanggalAktif, $cycleBilling = 1, $gracePeriod = 7) {
+    if (!$tanggalAktif) return null;
+    
+    $aktifDate = new DateTime($tanggalAktif);
+    
+    // Calculate next billing date  
+    $nextBilling = clone $aktifDate;
+    $nextBilling->modify('+1 month');
+    $nextBilling->setDate(
+        $nextBilling->format('Y'),
+        $nextBilling->format('n'), 
+        $cycleBilling
+    );
+    
+    // Add grace period
+    $isolirDate = clone $nextBilling;
+    $isolirDate->modify("+{$gracePeriod} days");
+    
+    return $isolirDate->format('Y-m-d');
 }

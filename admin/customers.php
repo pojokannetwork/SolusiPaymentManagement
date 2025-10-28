@@ -65,9 +65,10 @@ $guard->requirePermission('admin.customers');
                         <th>Phone</th>
                         <th>Package</th>
                         <th>Status</th>
+                        <th>Billing</th>
+                        <th>Active Date</th>
+                        <th>Isolir Date</th>
                         <th>PPPoE User</th>
-                        <th>Router</th>
-                        <th>Created</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -138,14 +139,34 @@ $page_specific_scripts = <<<'EOT'
                         return badges[data] || data;
                     }
                 },
-                { data: 'pppoe_user' },
-                { data: 'router_name', defaultContent: '-' },
                 {
-                    data: 'created_at',
+                    data: 'sistem_bayar',
                     render: function(data) {
-                        return new Date(data).toLocaleDateString('id-ID');
+                        const badges = {
+                            'postpaid': '<span class="badge bg-info">Postpaid</span>',
+                            'prepaid': '<span class="badge bg-warning">Prepaid</span>'
+                        };
+                        return badges[data] || data;
                     }
                 },
+                {
+                    data: 'tanggal_aktif',
+                    render: function(data) {
+                        return data ? new Date(data).toLocaleDateString('id-ID') : '-';
+                    }
+                },
+                {
+                    data: 'tanggal_isolir',
+                    render: function(data, type, row) {
+                        if (!data || row.sistem_bayar === 'prepaid') return '-';
+                        const isolirDate = new Date(data);
+                        const today = new Date();
+                        const isOverdue = isolirDate < today;
+                        const dateStr = isolirDate.toLocaleDateString('id-ID');
+                        return isOverdue ? `<span class="text-danger fw-bold">${dateStr}</span>` : dateStr;
+                    }
+                },
+                { data: 'pppoe_user' },
                 {
                     data: null,
                     orderable: false,
@@ -265,6 +286,9 @@ function setupEventListeners() {
         };
         $(document).on('input change', '#pppoe_user, #customer-id, #router_id', enforcePPPRequirements);
         enforcePPPRequirements();
+        
+        // Billing system logic
+        setupBillingSystemLogic();
         // Map interactions
         $(document).on('change', '#lat, #lon', () => syncMapFromFields());
         $(document).on('click', '#btn-current-location', function(){
@@ -318,6 +342,68 @@ function setupEventListeners() {
     });
 }
 
+// Billing System Logic
+function setupBillingSystemLogic() {
+    // Handle sistem bayar change
+    $(document).on('change', '#sistem_bayar', function() {
+        const sistemBayar = $(this).val();
+        toggleBillingFields(sistemBayar);
+    });
+    
+    // Handle tanggal aktif change for auto isolir calculation
+    $(document).on('change', '#tanggal_aktif, #cycle_billing, #grace_period', function() {
+        calculateTanggalIsolir();
+    });
+    
+    // Set default tanggal aktif to today when modal opens
+    $('#customerModal').on('show.bs.modal', function() {
+        if (!$('#tanggal_aktif').val()) {
+            const today = new Date().toISOString().split('T')[0];
+            $('#tanggal_aktif').val(today);
+        }
+        calculateTanggalIsolir();
+    });
+}
+
+function toggleBillingFields(sistemBayar) {
+    if (sistemBayar === 'prepaid') {
+        // Prepaid: Hide postpaid fields, show prepaid specific
+        $('#postpaid-fields').hide();
+        $('#isolir-fields').hide();
+        $('#cycle_billing').prop('required', false);
+    } else {
+        // Postpaid: Show billing cycle and isolir fields
+        $('#postpaid-fields').show();
+        $('#isolir-fields').show();
+        $('#cycle_billing').prop('required', true);
+    }
+}
+
+function calculateTanggalIsolir() {
+    const sistemBayar = $('#sistem_bayar').val();
+    const tanggalAktif = $('#tanggal_aktif').val();
+    const cycleBilling = parseInt($('#cycle_billing').val()) || 1;
+    const gracePeriod = parseInt($('#grace_period').val()) || 7;
+    
+    if (sistemBayar === 'postpaid' && tanggalAktif) {
+        const aktifDate = new Date(tanggalAktif);
+        
+        // Calculate next billing date
+        const nextBilling = new Date(aktifDate);
+        nextBilling.setMonth(nextBilling.getMonth() + 1);
+        nextBilling.setDate(cycleBilling);
+        
+        // Add grace period
+        const isolirDate = new Date(nextBilling);
+        isolirDate.setDate(isolirDate.getDate() + gracePeriod);
+        
+        // Set tanggal isolir if not manually set
+        if (!$('#tanggal_isolir').val()) {
+            $('#tanggal_isolir').val(isolirDate.toISOString().split('T')[0]);
+        }
+    }
+}
+
 // Geocoding helper
 function doGeocode(query) {
     const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}&accept-language=id`;
@@ -342,6 +428,17 @@ function showCreateModal() {
         $('#modal-title').text('Add Customer');
         $('#customer-form')[0].reset();
         $('#customer-id').val('');
+        
+        // Set billing system defaults
+        $('#sistem_bayar').val('postpaid');
+        $('#cycle_billing').val('1');
+        $('#grace_period').val('7');
+        $('#auto_isolir').prop('checked', true);
+        
+        // Set default tanggal aktif to today
+        const today = new Date().toISOString().split('T')[0];
+        $('#tanggal_aktif').val(today);
+        
         customerModal.show();
         // Re-evaluate PPP requirements in create mode
         $('#pppoe_pass').prop('required', false);
@@ -350,6 +447,10 @@ function showCreateModal() {
     // Load dynamic selects
     loadPackagesForForm('');
     loadProfilesForForm();
+    
+    // Initialize billing fields
+    toggleBillingFields('postpaid');
+    calculateTanggalIsolir();
 }
 
     function openWhatsAppModal(customerId) {
@@ -418,6 +519,18 @@ function showCreateModal() {
             $('#status').val(cust.status);
             $('#profile_aktif').val(cust.profile_aktif);
             $('#profile_isolir').val(cust.profile_isolir);
+            
+            // Billing system fields
+            $('#sistem_bayar').val(cust.sistem_bayar || 'postpaid');
+            $('#tanggal_aktif').val(cust.tanggal_aktif || '');
+            $('#tanggal_isolir').val(cust.tanggal_isolir || '');
+            $('#cycle_billing').val(cust.cycle_billing || 1);
+            $('#grace_period').val(cust.grace_period || 7);
+            $('#auto_isolir').prop('checked', cust.auto_isolir == 1);
+            
+            // Toggle billing fields based on sistem_bayar
+            toggleBillingFields(cust.sistem_bayar || 'postpaid');
+            
             // Mitra mapping (if available)
             if (cust.mitra_id) {
                 loadMitraDropdown(cust.mitra_id);
