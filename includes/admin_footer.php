@@ -169,8 +169,10 @@
 
         const isOpen = navItem.classList.contains('open');
 
-        // Close all other submenus
-        document.querySelectorAll('.nav-item.has-submenu.open').forEach(item => {
+        // Close sibling submenus at the same level only (keep ancestors open)
+        const container = navItem.parentElement;
+        const siblings = container ? container.querySelectorAll(':scope > li.nav-item.has-submenu.open') : [];
+        (siblings || []).forEach(item => {
             if (item !== navItem) {
                 item.classList.remove('open');
                 const otherSubmenu = item.querySelector('.submenu');
