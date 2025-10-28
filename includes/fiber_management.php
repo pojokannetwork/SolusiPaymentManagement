@@ -483,15 +483,36 @@ SQL;
 
     public static function storeUploadedPhoto(array $file): ?string
     {
-        if (empty($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
+        // Basic checks
+        if (empty($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
             return null;
         }
 
+        // Enforce max size if configured
+        $maxSize = defined('UPLOAD_MAX_SIZE') ? (int) UPLOAD_MAX_SIZE : (5 * 1024 * 1024); // 5MB default
+        if (!empty($file['size']) && (int)$file['size'] > $maxSize) {
+            throw new InvalidArgumentException('Ukuran file terlalu besar. Maksimum ' . number_format($maxSize / (1024*1024), 0) . 'MB');
+        }
+
+        // Validate extension
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+        $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
+        if (!in_array($ext, $allowedExt, true)) {
             throw new InvalidArgumentException('Format file tidak didukung. Gunakan JPG, PNG, atau WEBP.');
         }
 
+        // Validate MIME type via finfo for safety
+        $finfo = function_exists('finfo_open') ? @finfo_open(FILEINFO_MIME_TYPE) : false;
+        if ($finfo) {
+            $mime = @finfo_file($finfo, $file['tmp_name']);
+            @finfo_close($finfo);
+            $allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!in_array($mime, $allowedMime, true)) {
+                throw new InvalidArgumentException('Tipe file tidak valid. Hanya gambar yang diizinkan.');
+            }
+        }
+
+        // Persist file
         $targetDir = self::getUploadDirectory();
         $filename = 'closure_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
         $targetPath = $targetDir . DIRECTORY_SEPARATOR . $filename;

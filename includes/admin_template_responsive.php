@@ -299,7 +299,12 @@ function renderResponsiveAdminPage($title, $content, $user = null) {
                 padding: 0;
             }
         }
-    </style>
+    
+     /* Force static sidebar on all viewports */
+     #sidebar, .sidebar { left: 0 !important; transform: none !important; width: 280px !important; position: fixed !important; }
+     .main-content { margin-left: 280px !important; }
+     .sidebar-toggle, .sidebar-overlay, .mobile-toggle { display: none !important; }
+ </style>
 </head>
 <body>
     <!-- Responsive Sidebar -->

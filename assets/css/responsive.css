@@ -1,7 +1,8 @@
 /* Responsive Utilities for SolusiPaymentManagement */
 
 /* Mobile Navigation Overlay */
-.sidebar-overlay {
+/* disabled overlay */
+.sidebar-overlay-disabled,
     position: fixed;
     top: 0;
     left: 0;

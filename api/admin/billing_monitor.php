@@ -267,18 +267,39 @@ function generateInvoiceForCustomer($customer) {
     $nextMonth = date('Y-m-d', strtotime('+1 month'));
     $dueDate = date('Y-m-d', strtotime($nextMonth . ' +' . ($customer['grace_period'] ?? 7) . ' days'));
     
+    // Calculate tax if applicable
+    $subtotal = $amount;
+    $tax = 0; // Can be calculated based on tax settings if needed
+    $total = $subtotal + $tax;
+
     // Create invoice
     $invoiceId = $db->execute(
-        "INSERT INTO faktur (pelanggan_id, nomor, tanggal_terbit, jatuh_tempo, total, status, keterangan, created_at, updated_at)
-         VALUES (?, ?, date('now'), ?, ?, 'unpaid', ?, datetime('now'), datetime('now'))",
+        "INSERT INTO faktur (pelanggan_id, nomor, tanggal, jatuh_tempo, subtotal, pajak, total, status, created_at, updated_at)
+         VALUES (?, ?, date('now'), ?, ?, ?, ?, 'sent', datetime('now'), datetime('now'))",
         [
             $customer['id'],
             $invoiceNumber,
             $dueDate,
-            $amount,
-            'Tagihan bulanan paket ' . $customer['paket']
+            $subtotal,
+            $tax,
+            $total
         ]
     );
+
+    // Create invoice item for the package
+    if ($invoiceId) {
+        $db->execute(
+            "INSERT INTO invoice_items (faktur_id, deskripsi, qty, harga, subtotal)
+             VALUES (?, ?, ?, ?, ?)",
+            [
+                $invoiceId,
+                'Tagihan bulanan paket ' . $customer['paket'],
+                1,
+                $amount,
+                $amount
+            ]
+        );
+    }
     
     return $invoiceId;
 }

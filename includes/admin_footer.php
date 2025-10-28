@@ -2,8 +2,113 @@
 </div> <!-- closes main-content from header -->
 
 <!-- Common Admin JS -->
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- jQuery and Bootstrap JS are now loaded in admin_header.php -->
+<!-- Local Bootstrap bundle is not full; JS fallback below handles modal/offcanvas if CDN is blocked -->
+<script src="/assets/vendor/bootstrap/local-bootstrap.js" defer></script>
+<script>
+// jQuery minimal fallback (if CDN blocked)
+(function(){
+    if (typeof window.jQuery === 'undefined' && typeof window.$ === 'undefined') {
+        const ajaxConfig = { headers: {} };
+        function ajaxSetup(opts){ if (opts && opts.headers){ ajaxConfig.headers = Object.assign({}, ajaxConfig.headers, opts.headers); } }
+        function post(url, data){
+            const headers = Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, ajaxConfig.headers);
+            const body = (typeof data === 'string') ? data : new URLSearchParams(data || {}).toString();
+            return fetch(url, { method: 'POST', headers, body });
+        }
+        window.$ = { ajaxSetup, post };
+    }
+})();
+</script>
+<script>
+// Lightweight Bootstrap fallback for offline/restricted environments
+// Provides minimal Modal, Offcanvas, and Alert APIs used by pages
+(function(){
+    if (typeof window.bootstrap !== 'undefined') return;
+
+    function addBackdrop() {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show';
+        document.body.appendChild(backdrop);
+        document.body.classList.add('modal-open');
+        return backdrop;
+    }
+    function removeBackdrop() {
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.remove();
+        document.body.classList.remove('modal-open');
+    }
+
+    class ModalFallback {
+        constructor(element) {
+            this.el = typeof element === 'string' ? document.querySelector(element) : element;
+        }
+        show() {
+            if (!this.el) return;
+            this.el.style.display = 'block';
+            this.el.removeAttribute('aria-hidden');
+            this.el.setAttribute('aria-modal', 'true');
+            this.el.classList.add('show');
+            addBackdrop();
+        }
+        hide() {
+            if (!this.el) return;
+            this.el.classList.remove('show');
+            this.el.style.display = 'none';
+            this.el.setAttribute('aria-hidden', 'true');
+            removeBackdrop();
+        }
+        static getOrCreateInstance(element) { return new ModalFallback(element); }
+    }
+
+    class OffcanvasFallback {
+        constructor(element) {
+            this.el = typeof element === 'string' ? document.querySelector(element) : element;
+        }
+        show() {
+            if (!this.el) return;
+            this.el.classList.add('show');
+            this.el.style.visibility = 'visible';
+        }
+        hide() {
+            if (!this.el) return;
+            this.el.classList.remove('show');
+            this.el.style.visibility = '';
+        }
+        static getOrCreateInstance(element) { return new OffcanvasFallback(element); }
+    }
+
+    class AlertFallback {
+        constructor(element) { this.el = element; }
+        close() { if (this.el && this.el.remove) this.el.remove(); }
+        static getOrCreateInstance(element) { return new AlertFallback(element); }
+    }
+
+    // Expose minimal bootstrap API
+    window.bootstrap = {
+        Modal: ModalFallback,
+        Offcanvas: OffcanvasFallback,
+        Alert: AlertFallback
+    };
+
+    // Handle [data-bs-dismiss] in fallback mode
+    document.addEventListener('click', function(e){
+        const dismissModalBtn = e.target.closest('[data-bs-dismiss="modal"]');
+        if (dismissModalBtn) {
+            e.preventDefault();
+            const modalEl = dismissModalBtn.closest('.modal');
+            if (modalEl) new ModalFallback(modalEl).hide();
+            return;
+        }
+        const dismissOffcanvasBtn = e.target.closest('[data-bs-dismiss="offcanvas"]');
+        if (dismissOffcanvasBtn) {
+            e.preventDefault();
+            const offEl = dismissOffcanvasBtn.closest('.offcanvas');
+            if (offEl) new OffcanvasFallback(offEl).hide();
+        }
+    });
+})();
+</script>
 
 <!-- Common script logic -->
 <script>
@@ -15,18 +120,13 @@
         }
     });
 
-    // Enhanced Sidebar toggle for mobile
+    // Enhanced Sidebar toggle for mobile (disabled to prevent overlay)
     function toggleSidebar(open) {
         const sidebar = document.getElementById('sidebar');
         const body = document.body;
-        
-        if (typeof open === 'boolean') {
-            body.classList.toggle('sidebar-open', open);
-            if (sidebar) sidebar.classList.toggle('show', open);
-        } else {
-            body.classList.toggle('sidebar-open');
-            if (sidebar) sidebar.classList.toggle('show');
-        }
+        // Force static behavior: always visible, no overlay/backdrop
+        body.classList.remove('sidebar-open');
+        if (sidebar) sidebar.classList.add('show');
     }
 
     // Theme toggle functionality

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AJAX API Test</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+</head>
+<body>
+    <h1>AJAX API Test</h1>
+    <div id="results"></div>
+
+    <script>
+    $(document).ready(function() {
+        // Test Invoices API
+        $.ajax({
+            url: '/api/admin/invoices.php?action=summary',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                $('#results').append('<h3>Invoices API Success:</h3>');
+                $('#results').append('<pre>' + JSON.stringify(response, null, 2) + '</pre>');
+            },
+            error: function(xhr, status, error) {
+                $('#results').append('<h3>Invoices API Error:</h3>');
+                $('#results').append('<p>Status: ' + xhr.status + '</p>');
+                $('#results').append('<p>Error: ' + error + '</p>');
+                $('#results').append('<pre>' + xhr.responseText + '</pre>');
+            }
+        });
+
+        // Test Transactions API
+        $.ajax({
+            url: '/api/admin/transactions.php?action=summary',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                $('#results').append('<h3>Transactions API Success:</h3>');
+                $('#results').append('<pre>' + JSON.stringify(response, null, 2) + '</pre>');
+            },
+            error: function(xhr, status, error) {
+                $('#results').append('<h3>Transactions API Error:</h3>');
+                $('#results').append('<p>Status: ' + xhr.status + '</p>');
+                $('#results').append('<p>Error: ' + error + '</p>');
+                $('#results').append('<pre>' + xhr.responseText + '</pre>');
+            }
+        });
+    });
+    </script>
+</body>
+</html>

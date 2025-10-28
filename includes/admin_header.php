@@ -22,7 +22,7 @@ $user = getCurrentUser();
     
     <?= renderFavicon() ?>
 
-    <!-- Bootstrap 5 -->
+    <!-- Bootstrap 5 (CDN) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -377,11 +377,23 @@ $user = getCurrentUser();
         }
 
         /* So the screen is not too dark when a modal is open */
-        .modal-backdrop.show {
-            opacity: .25; /* default ~.5; make it lighter */
+        /* disable modal backdrop dim and clicks */
+.modal-backdrop, .modal-backdrop.show {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        .sidebar-overlay, .sidebar-backdrop {
+            display: none !important;
+            pointer-events: none !important;
         }
         /* Avoid accidental sidebar overlay when a modal is open */
         .modal-open .sidebar-backdrop { display: none !important; }
+    
+        /* Force static sidebar on all viewports */
+        #sidebar, .sidebar { left: 0 !important; transform: none !important; width: 280px !important; position: fixed !important; }
+        .main-content { margin-left: 280px !important; }
+        .mobile-toggle, .sidebar-toggle { display: none !important; }
+        .sidebar-backdrop { display: none !important; }
     </style>
     <script>
         // Minimal fallback to ensure submenu toggles even if footer JS is cached/missing
@@ -411,6 +423,11 @@ $user = getCurrentUser();
             });
         });
     </script>
+
+    <!-- jQuery (required for Bootstrap and custom scripts) -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- Bootstrap 5 JS Bundle (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
 

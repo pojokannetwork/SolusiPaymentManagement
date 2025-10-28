@@ -32,6 +32,13 @@ class Database {
             if (strpos(DB_HOST, 'sqlite:') === 0) {
                 // SQLite connection
                 $this->pdo = new PDO(DB_HOST, null, null, PDO_OPTIONS);
+
+                // Ensure sane defaults for SQLite in-app usage
+                // Enable foreign keys so ON DELETE CASCADE works (needed by fiber tables)
+                $this->pdo->exec('PRAGMA foreign_keys = ON');
+                // Improve concurrency and reduce locking issues
+                $this->pdo->exec('PRAGMA journal_mode = WAL');
+                $this->pdo->exec('PRAGMA busy_timeout = 5000');
             } else {
                 // MySQL connection
                 $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
