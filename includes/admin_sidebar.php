@@ -37,7 +37,7 @@ $can = function($perm){
     <!-- Customer Management -->
     <?php if ($can('admin.customers') || $can('admin.customers_map') || $can('admin.agents')): ?>
     <li class="nav-item has-submenu">
-        <a class="nav-link" href="#" onclick="return toggleSubmenu(this)">
+        <a class="nav-link" href="javascript:void(0)" onclick="return toggleSubmenu(this)">
             <i class="fas fa-users me-2"></i>Customer Management
         </a>
         <ul class="submenu">
@@ -57,7 +57,7 @@ $can = function($perm){
     <!-- Financial -->
     <?php if ($can('admin.invoices') || $can('admin.transactions') || $can('admin.payment_gateways') || $can('admin.taxes')): ?>
     <li class="nav-item has-submenu">
-        <a class="nav-link" href="#" onclick="return toggleSubmenu(this)">
+        <a class="nav-link" href="javascript:void(0)" onclick="return toggleSubmenu(this)">
             <i class="fas fa-credit-card me-2"></i>Financial
         </a>
         <ul class="submenu">
@@ -83,7 +83,7 @@ $can = function($perm){
     <!-- Network Management -->
     <?php if ($can('admin.settings') || $can('admin.assets') || $can('admin.odp') || $can('admin.onu')): ?>
     <li class="nav-item has-submenu">
-        <a class="nav-link" href="#" onclick="return toggleSubmenu(this)">
+        <a class="nav-link" href="javascript:void(0)" onclick="return toggleSubmenu(this)">
             <i class="fas fa-network-wired me-2"></i>Network
         </a>
         <ul class="submenu">
@@ -91,7 +91,7 @@ $can = function($perm){
                 <i class="fas fa-router me-2"></i>Mikrotik
             </a></li><?php endif; ?>
             <?php if ($can('admin.assets')): ?><li class="nav-item has-submenu">
-                <a class="nav-link" href="#" onclick="return toggleSubmenu(this)">
+                <a class="nav-link" href="javascript:void(0)" onclick="return toggleSubmenu(this)">
                     <i class="fas fa-broadcast-tower me-2"></i>Fiber Optic
                 </a>
                 <ul class="submenu">
@@ -122,7 +122,7 @@ $can = function($perm){
     <!-- Services -->
     <?php if ($can('admin.packages') || $can('admin.vouchers')): ?>
     <li class="nav-item has-submenu">
-        <a class="nav-link" href="#" onclick="return toggleSubmenu(this)">
+        <a class="nav-link" href="javascript:void(0)" onclick="return toggleSubmenu(this)">
             <i class="fas fa-box me-2"></i>Services
         </a>
         <ul class="submenu">
@@ -139,7 +139,7 @@ $can = function($perm){
     <!-- HR Management -->
     <?php if ($can('admin.employees') || $can('admin.payroll')): ?>
     <li class="nav-item has-submenu">
-        <a class="nav-link" href="#" onclick="return toggleSubmenu(this)">
+        <a class="nav-link" href="javascript:void(0)" onclick="return toggleSubmenu(this)">
             <i class="fas fa-id-badge me-2"></i>HR Management
         </a>
         <ul class="submenu">
@@ -174,7 +174,7 @@ $can = function($perm){
     <!-- Warehouse / Inventory -->
     <?php if ($can('admin.warehouse')): ?>
     <li class="nav-item has-submenu">
-        <a class="nav-link" href="#" onclick="return toggleSubmenu(this)">
+        <a class="nav-link" href="javascript:void(0)" onclick="return toggleSubmenu(this)">
             <i class="fas fa-warehouse me-2"></i>Gudang / Stok Gudang
         </a>
         <ul class="submenu">
@@ -203,7 +203,7 @@ $can = function($perm){
     <!-- Settings -->
     <?php if ($can('admin.settings')): ?>
     <li class="nav-item has-submenu">
-        <a class="nav-link" href="#" onclick="return toggleSubmenu(this)">
+        <a class="nav-link" href="javascript:void(0)" onclick="return toggleSubmenu(this)">
             <i class="fas fa-cog me-2"></i>Settings
         </a>
         <ul class="submenu">
