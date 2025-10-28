@@ -1,0 +1,14 @@
+[Unit]
+Description=SolusiPayment - WhatsApp Queue Worker
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/SolusiPaymentManagement
+ExecStart=/usr/bin/php scripts/wa_queue_worker.php
+Restart=always
+RestartSec=30
+User=www-data
+
+[Install]
+WantedBy=multi-user.target

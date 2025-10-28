@@ -1,0 +1,15 @@
+[Unit]
+Description=SolusiPayment - WhatsApp QR Gateway
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/SolusiPaymentManagement/payment_whatsapp_module
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+User=www-data
+Environment=PORT=3001
+
+[Install]
+WantedBy=multi-user.target
