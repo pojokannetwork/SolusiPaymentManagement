@@ -90,9 +90,22 @@ $can = function($perm){
             <?php if ($can('admin.settings')): ?><li><a class="nav-link<?php echo is_active('mikrotik.php'); ?>" href="/admin/mikrotik.php">
                 <i class="fas fa-router me-2"></i>Mikrotik
             </a></li><?php endif; ?>
-            <?php if ($can('admin.assets')): ?><li><a class="nav-link<?php echo is_active(['fiber_management.php']); ?>" href="/admin/fiber_management.php">
-                <i class="fas fa-broadcast-tower me-2"></i>Fiber Optic
-            </a></li><?php endif; ?>
+            <?php if ($can('admin.assets')): ?><li class="nav-item has-submenu">
+                <a class="nav-link" href="#" onclick="return toggleSubmenu(this)">
+                    <i class="fas fa-broadcast-tower me-2"></i>Fiber Optic
+                </a>
+                <ul class="submenu">
+                    <li><a class="nav-link<?php echo is_active('fiber_dashboard.php'); ?>" href="/admin/fiber_dashboard.php">
+                        <i class="fas fa-chart-line me-2"></i>Dashboard
+                    </a></li>
+                    <li><a class="nav-link<?php echo is_active('fiber_management.php'); ?>" href="/admin/fiber_management.php">
+                        <i class="fas fa-cog me-2"></i>Management
+                    </a></li>
+                    <li><a class="nav-link<?php echo is_active('fiber_map.php'); ?>" href="/admin/fiber_map.php">
+                        <i class="fas fa-map-marked-alt me-2"></i>Map View
+                    </a></li>
+                </ul>
+            </li><?php endif; ?>
             <?php if ($can('admin.dashboard')): ?><li><a class="nav-link<?php echo is_active(['olt_monitoring.php']); ?>" href="/admin/olt_monitoring.php">
                 <i class="fas fa-satellite-dish me-2"></i>OLT Monitoring
             </a></li><?php endif; ?>
