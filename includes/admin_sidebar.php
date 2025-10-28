@@ -160,8 +160,11 @@ $can = function($perm){
             <i class="fas fa-message me-2"></i>Communications
         </a>
         <ul class="submenu">
+            <li><a class="nav-link<?php echo is_active('whatsapp_gateway.php'); ?>" href="/admin/whatsapp_gateway.php">
+                <i class="fab fa-whatsapp me-2"></i>WhatsApp Gateway (QR)
+            </a></li>
             <li><a class="nav-link<?php echo is_active('whatsapp_notifications.php'); ?>" href="/admin/whatsapp_notifications.php">
-                <i class="fab fa-whatsapp me-2"></i>WhatsApp Notifications
+                <i class="fas fa-bell me-2"></i>WhatsApp Notifications
             </a></li>
             <li><a class="nav-link<?php echo is_active('lusi_assistant.php'); ?>" href="/admin/lusi_assistant.php">
                 <i class="fas fa-robot me-2"></i>LUSI Assistant
