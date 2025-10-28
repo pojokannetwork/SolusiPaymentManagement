@@ -144,6 +144,12 @@ function handleCreate() {
         );
     }
 
+    // Handle router_id special case for RADIUS
+    if ($data['router_id'] === 'radius') {
+        $data['router_id'] = null; // Set to null for RADIUS mode
+        $data['auth_method'] = 'radius'; // Add auth method indicator if column exists
+    }
+
     $fields = ['kode_pelanggan', 'nama', 'email', 'telp', 'alamat', 'lat', 'lon', 'paket', 'status', 'router_id', 'pppoe_user', 'pppoe_pass_enc', 'profile_aktif', 'profile_isolir', 'tanggal_aktif', 'sistem_bayar', 'tanggal_isolir', 'cycle_billing', 'auto_isolir', 'grace_period'];
     $insertData = [];
     foreach ($fields as $field) {
@@ -250,6 +256,11 @@ function handleUpdate() {
         }
     }
 
+    // Handle router_id special case for RADIUS in update
+    if (isset($data['router_id']) && $data['router_id'] === 'radius') {
+        $data['router_id'] = null; // Set to null for RADIUS mode
+    }
+
     $fields = ['nama', 'email', 'telp', 'alamat', 'lat', 'lon', 'paket', 'status', 'router_id', 'pppoe_user', 'pppoe_pass_enc', 'profile_aktif', 'profile_isolir', 'tanggal_aktif', 'sistem_bayar', 'tanggal_isolir', 'cycle_billing', 'auto_isolir', 'grace_period'];
     $setClauses = [];
     $params = [];
@@ -344,11 +355,12 @@ function handleToggleStatus($customerId, $action) {
         // Update DB status first
         $db->execute('UPDATE pelanggan SET status = ? WHERE id = ?', [$newStatus, $customerId]);
 
-        // Provision based on Source of Truth
-        $source = getSetting('source_of_truth', 'radius');
+        // Provision based on customer's authentication method
+        // If customer has router_id, use Mikrotik; otherwise use RADIUS
         $username = $customer['pppoe_user'] ?? '';
         if ($username) {
-            if ($source === 'mikrotik' && !empty($customer['router_id'])) {
+            if (!empty($customer['router_id'])) {
+                // Customer configured for specific Mikrotik router
                 try {
                     $api = MtkFactory::createFromRouter((int)$customer['router_id']);
                     if ($newStatus === 'active') {
@@ -373,7 +385,8 @@ function handleToggleStatus($customerId, $action) {
                 } catch (Throwable $te) {
                     error_log('MikroTik provisioning (toggle) failed: ' . $te->getMessage());
                 }
-            } elseif ($source === 'radius') {
+            } else {
+                // Customer configured for RADIUS authentication
                 try {
                     $radius = new RadiusSqlCoa();
                     if ($newStatus === 'active') {

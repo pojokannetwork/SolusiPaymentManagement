@@ -98,11 +98,17 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Router</label>
+                            <label class="form-label">Router / Authentication Method</label>
                             <select class="form-select" id="router_id" name="router_id">
-                                <option value="">Select Router</option>
+                                <option value="">Select Router/Method</option>
+                                <option value="radius">RADIUS (Central Authentication)</option>
                             </select>
-                            <div class="form-text">Wajib diisi jika PPPoE Username diisi</div>
+                            <div class="form-text">
+                                <small>
+                                    <strong>RADIUS:</strong> Central authentication server<br>
+                                    <strong>Mikrotik Router:</strong> Direct router management
+                                </small>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Status</label>

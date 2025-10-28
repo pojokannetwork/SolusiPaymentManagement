@@ -69,6 +69,7 @@ $guard->requirePermission('admin.customers');
                         <th>Active Date</th>
                         <th>Isolir Date</th>
                         <th>PPPoE User</th>
+                        <th>Auth Method</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -169,6 +170,18 @@ $page_specific_scripts = <<<'EOT'
                 { data: 'pppoe_user' },
                 {
                     data: null,
+                    render: function(data) {
+                        if (!data.pppoe_user) return '-';
+                        
+                        if (!data.router_id || data.router_id === '') {
+                            return '<span class="badge bg-info"><i class="fas fa-server me-1"></i>RADIUS</span>';
+                        } else {
+                            return '<span class="badge bg-primary"><i class="fas fa-router me-1"></i>Mikrotik</span>';
+                        }
+                    }
+                },
+                {
+                    data: null,
                     orderable: false,
                     render: function(data) {
                         return `
@@ -192,10 +205,18 @@ function loadRouters() {
     // Routers for modal
     $.get('/api/admin/mikrotik?action=routers').done(function(response) {
         if (response.success) {
-            let options = '<option value="">Select Router</option>';
-            (response.data?.routers || []).forEach(router => options += `<option value="${router.id}">${router.name}</option>`);
+            let options = '<option value="">Select Router/Method</option>';
+            options += '<option value="radius"><i class="fas fa-server"></i> RADIUS (Central Authentication)</option>';
+            (response.data?.routers || []).forEach(router => {
+                options += `<option value="${router.id}"><i class="fas fa-router"></i> ${router.name} (${router.host || 'Mikrotik'})</option>`;
+            });
             $('#router_id').html(options);
         }
+    }).fail(function() {
+        // Fallback if mikrotik API fails
+        let options = '<option value="">Select Router/Method</option>';
+        options += '<option value="radius">RADIUS (Central Authentication)</option>';
+        $('#router_id').html(options);
     });
     // Packages for table filter
     $.get('/api/admin/packages.php?action=list').done(function(data){
@@ -281,10 +302,32 @@ function setupEventListeners() {
         const enforcePPPRequirements = () => {
             const isCreate = ($('#customer-id').val() || '') === '';
             const hasUser = ($('#pppoe_user').val() || '').trim().length > 0;
+            const routerValue = $('#router_id').val();
+            
             $('#pppoe_pass').prop('required', isCreate && hasUser);
+            
+            // Router/Authentication method is required if PPPoE user is specified
             $('#router_id').prop('required', hasUser);
+            
+            // Show helpful text based on selection
+            updateRouterHelperText(routerValue);
         };
+        
+        function updateRouterHelperText(routerValue) {
+            let helpText = '';
+            if (routerValue === 'radius') {
+                helpText = '<small><strong>RADIUS selected:</strong> Customer will be authenticated via central RADIUS server</small>';
+            } else if (routerValue && routerValue !== '') {
+                helpText = '<small><strong>Mikrotik Router selected:</strong> Customer will be managed directly on this router</small>';
+            } else {
+                helpText = '<small><strong>RADIUS:</strong> Central authentication server<br><strong>Mikrotik Router:</strong> Direct router management</small>';
+            }
+            $('#router_id').closest('.col-md-6').find('.form-text').html(helpText);
+        }
         $(document).on('input change', '#pppoe_user, #customer-id, #router_id', enforcePPPRequirements);
+        $(document).on('change', '#router_id', function() {
+            updateRouterHelperText($(this).val());
+        });
         enforcePPPRequirements();
         
         // Billing system logic
@@ -515,7 +558,12 @@ function showCreateModal() {
                 $('#lat').val(cust.lat || '');
                 $('#lon').val(cust.lon || '');
                 $('#pppoe_user').val(cust.pppoe_user);
-            $('#router_id').val(cust.router_id);
+            // Handle RADIUS selection (if router_id is null/empty and has pppoe_user)
+            if (cust.pppoe_user && (!cust.router_id || cust.router_id === '')) {
+                $('#router_id').val('radius');
+            } else {
+                $('#router_id').val(cust.router_id);
+            }
             $('#status').val(cust.status);
             $('#profile_aktif').val(cust.profile_aktif);
             $('#profile_isolir').val(cust.profile_isolir);
