@@ -104,7 +104,9 @@
 
     // Close sidebar on link click (mobile) and Esc key
     document.querySelectorAll('.sidebar .nav-link').forEach(function(link){
-        link.addEventListener('click', function(){
+        link.addEventListener('click', function(e){
+            // If this is a submenu toggle, do not close sidebar
+            if (link.closest('.nav-item.has-submenu')) return;
             if (window.innerWidth < 992) {
                 setTimeout(() => toggleSidebar(false), 100);
             }
