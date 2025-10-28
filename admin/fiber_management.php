@@ -336,7 +336,7 @@ $csrfToken = getCsrfToken();
 <?php $page_specific_scripts = <<<'EOT'
 <script src="/assets/vendor/simpleleaflet.js"></script>
 <script>
-const csrfToken = '<?= $csrfToken; ?>';
+const fiberCsrfToken = '<?= $csrfToken; ?>';
 let closureModal, connectionModal, closureDetails;
 let mapInstance = null;
 let markersLayer = null;
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function buildHeaders() {
-    return { 'X-CSRF-Token': csrfToken };
+    return { 'X-CSRF-Token': (typeof csrfToken !== 'undefined' ? csrfToken : fiberCsrfToken) };
 }
 
 function refreshAll() {
@@ -591,7 +591,7 @@ function submitClosureForm(event) {
 
     fetch('/api/admin/fiber_management.php?action=' + action, {
         method: 'POST',
-        headers: { 'X-CSRF-Token': csrfToken },
+        headers: buildHeaders(),
         body: formData
     })
         .then(res => res.json())
