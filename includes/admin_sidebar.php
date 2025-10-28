@@ -155,10 +155,18 @@ $can = function($perm){
 
     <!-- Communications -->
     <?php if ($can('admin.customers')): ?>
-    <li class="nav-item">
-        <a class="nav-link<?php echo is_active('whatsapp_notifications.php'); ?>" href="/admin/whatsapp_notifications.php">
-            <i class="fas fa-message me-2"></i>WhatsApp
+    <li class="nav-item has-submenu">
+        <a class="nav-link" href="javascript:void(0)" onclick="return toggleSubmenu(this)">
+            <i class="fas fa-message me-2"></i>Communications
         </a>
+        <ul class="submenu">
+            <li><a class="nav-link<?php echo is_active('whatsapp_notifications.php'); ?>" href="/admin/whatsapp_notifications.php">
+                <i class="fab fa-whatsapp me-2"></i>WhatsApp Notifications
+            </a></li>
+            <li><a class="nav-link<?php echo is_active('lusi_assistant.php'); ?>" href="/admin/lusi_assistant.php">
+                <i class="fas fa-robot me-2"></i>LUSI Assistant
+            </a></li>
+        </ul>
     </li>
     <?php endif; ?>
 
